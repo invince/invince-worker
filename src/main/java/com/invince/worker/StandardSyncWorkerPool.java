@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -34,24 +35,8 @@ public class StandardSyncWorkerPool<T extends AbstractTask, GroupByType> extends
     }
 
     protected void doWait(GroupByType groupBy) {
-        boolean await = true;
-        while(await && requestTaskMap.containsKey(groupBy)) {
-            await = false;
-            for (T task : requestTaskMap.get(groupBy)) {
-                if(task.isError()) {
-                    throw new WorkerException("Task failed");
-                }
-                if(!task.isDone()){
-                    await = true;
-                    break;
-                }
-            }
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                throw new WorkerException(e.getMessage(), e);
-            }
+        if(requestTaskMap.containsKey(groupBy) && !requestTaskMap.get(groupBy).isEmpty()) {
+            CompletableFuture.allOf(requestTaskMap.get(groupBy).toArray(new AbstractTask[0])).join();
         }
-
     }
 }

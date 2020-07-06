@@ -1,5 +1,6 @@
 package com.invince.worker;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 
@@ -9,22 +10,26 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
-public class StandardWorkerPool<T extends AbstractTask> implements DisposableBean {
+public class StandardWorkerPool<T extends BaseTask> implements DisposableBean {
 
     private final int maxWorker;
     private final AtomicInteger workerLaunched = new AtomicInteger(0);
 
     private final ThreadPoolExecutor executor;
-    private final BlockingQueue<AbstractTask> toDo;
+    private final BlockingQueue<BaseTask> toDo;
     private final ConcurrentHashMap<String, T> processing = new ConcurrentHashMap<>();
+
     private List<StandardWorker<T>> workers = new ArrayList<>();
+
 
     public StandardWorkerPool(int maxWorker) {
         if(maxWorker <= 0) {
             maxWorker = 1;
         }
+        ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                .setNameFormat(getClass().getSimpleName() + "-thread-%d").build();
         this.maxWorker = maxWorker;
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxWorker);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxWorker, threadFactory);
         this.toDo = new LinkedBlockingDeque<>();
     }
 
@@ -55,20 +60,7 @@ public class StandardWorkerPool<T extends AbstractTask> implements DisposableBea
         for (int i = 0; i < maxWorker; i++) {
              toDo.add(new FinishTask());
         }
-        while(await) {
-            await = false;
-            for (StandardWorker<T> worker : workers) {
-                if(!worker.finished()){
-                    await = true;
-                    break;
-                }
-            }
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                new WorkerException(e.getMessage(), e);
-            }
-        }
+        CompletableFuture.allOf(workers.toArray(new StandardWorker[0])).join();
     }
 
 

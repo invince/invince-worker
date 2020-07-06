@@ -1,30 +1,31 @@
 package com.invince.worker;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class StandardWorker <T extends AbstractTask> implements Runnable {
+@Slf4j
+public class StandardWorker <T extends BaseTask> extends CompletableFuture<Void> implements Runnable {
 
     // from workerpool
-    private final BlockingQueue<AbstractTask> toDo;
+    private final BlockingQueue<BaseTask> toDo;
 
     // from workerpool
     private final ConcurrentHashMap<String, T> processing;
 
-    private boolean finished = false;
-
     private int counter = 0;
 
-    public StandardWorker(BlockingQueue<AbstractTask> toDo, ConcurrentHashMap<String, T> processing) {
+    public StandardWorker(BlockingQueue<BaseTask> toDo, ConcurrentHashMap<String, T> processing) {
         this.toDo = toDo;
         this.processing = processing;
     }
 
     @Override
     public void run() {
-
         try {
-            AbstractTask task;
+            BaseTask task;
             do{
                 task = toDo.take();
                 if(task != null && !(task instanceof FinishTask)) {
@@ -35,12 +36,9 @@ public class StandardWorker <T extends AbstractTask> implements Runnable {
                 }
             }while (task != null && !(task instanceof FinishTask));
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
-        finished = true;
-    }
-
-    public boolean finished() {
-        return finished;
+        log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
+        this.complete(null);
     }
 }
