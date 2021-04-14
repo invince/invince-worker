@@ -1,8 +1,12 @@
 package com.invince.worker;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class FinishTask extends AbstractTask {
+
     @Override
-    public void process() {
-        // do nothing
+    protected void doProcess() {
+        log.debug("Finish task process");
     }
 }
