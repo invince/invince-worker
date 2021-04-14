@@ -1,7 +1,7 @@
-package com.invince.worker;
+package com.invince.worker.exception;
 
 public class WorkerException extends RuntimeException {
-    public WorkerException(String message, InterruptedException e) {
+    public WorkerException(String message, Throwable e) {
         super(message, e);
     }
 

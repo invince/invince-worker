@@ -1,46 +1,51 @@
 package com.invince.worker;
 
+import com.invince.worker.exception.WorkerError;
+import lombok.extern.slf4j.Slf4j;
+
+import java.time.ZonedDateTime;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class StandardWorker <T extends AbstractTask> implements Runnable {
+@Slf4j
+public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> implements Runnable {
 
     // from workerpool
-    private final BlockingQueue<AbstractTask> toDo;
+    private final BlockingQueue<BaseTask> toDo;
 
     // from workerpool
     private final ConcurrentHashMap<String, T> processing;
 
-    private boolean finished = false;
-
     private int counter = 0;
 
-    public StandardWorker(BlockingQueue<AbstractTask> toDo, ConcurrentHashMap<String, T> processing) {
+    public StandardWorker(BlockingQueue<BaseTask> toDo, ConcurrentHashMap<String, T> processing) {
         this.toDo = toDo;
         this.processing = processing;
     }
 
     @Override
     public void run() {
-
         try {
-            AbstractTask task;
-            do{
+            BaseTask task;
+            do {
                 task = toDo.take();
-                if(task != null && !(task instanceof FinishTask)) {
+                if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
+                    log.debug("Task {} starts at {}, stills has {} tasks in todo list",
+                            task.getKey(), ZonedDateTime.now(), toDo.size());
                     processing.put(task.getKey(), (T) task);
                     task.process();
                     processing.remove(task.getKey());
-                    counter ++;
+                    counter++;
+                    log.debug("Task {} finishes at {}, stills has {} tasks in processing",
+                            task.getKey(), ZonedDateTime.now(), processing.size());
                 }
-            }while (task != null && !(task instanceof FinishTask));
+            } while (task != null && !(task instanceof FinishTask));
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            throw new WorkerError(e.getMessage(), e);
         }
-        finished = true;
-    }
-
-    public boolean finished() {
-        return finished;
+        log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
+        this.complete(null);
     }
 }
