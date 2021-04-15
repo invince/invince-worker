@@ -40,5 +40,6 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
         if(requestTaskMap.containsKey(group) && !requestTaskMap.get(group).isEmpty()) {
             CompletableFuture.allOf(requestTaskMap.get(group).toArray(new BaseTask<?>[0])).join();
         }
+        requestTaskMap.remove(group);
     }
 }

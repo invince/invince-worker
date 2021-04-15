@@ -42,7 +42,7 @@ public abstract class ChainedSyncWithResultWorkerPool
         T task = newTask(group, param);
         task.chain(this.poolChain);
         enqueue(task); // this add into blocking queu
-        addIntoGroup(group, task);
+        addIntoGroup(group, task); // this put task in the group, so we can wait result for a group
     }
 
     public void enqueueAll2(GroupByType group, Collection<SingleResultWithParam> paramList) {
