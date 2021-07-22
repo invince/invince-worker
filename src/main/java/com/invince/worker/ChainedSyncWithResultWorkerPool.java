@@ -1,6 +1,6 @@
 package com.invince.worker;
 
-import com.invince.worker.exception.WorkerError;
+import com.invince.exception.WorkerError;
 
 import java.util.Collection;
 import java.util.List;
@@ -15,12 +15,12 @@ public abstract class ChainedSyncWithResultWorkerPool
 
     private ChainedSyncWithResultWorkerPool<?, GroupByType, SingleResultWithParam, GatheredResult> poolChain;
 
-    public ChainedSyncWithResultWorkerPool(int maxWorker) {
-        super(maxWorker, null);
+    public ChainedSyncWithResultWorkerPool(WorkerPoolSetup config) {
+        super(config, null);
     }
 
-    public ChainedSyncWithResultWorkerPool(int maxWorker, Function<List<SingleResultWithParam>, GatheredResult> gatherFn) {
-        super(maxWorker, gatherFn);
+    public ChainedSyncWithResultWorkerPool(WorkerPoolSetup config, Function<List<SingleResultWithParam>, GatheredResult> gatherFn) {
+        super(config, gatherFn);
     }
 
     public ChainedSyncWithResultWorkerPool<T, GroupByType, SingleResultWithParam, GatheredResult> chain(

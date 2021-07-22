@@ -16,7 +16,7 @@ class SyncWorkerPoolTest {
 
     @Test
     void test() {
-        SyncWorkerPool<MyTask, Integer> pool = new SyncWorkerPool<>(3);
+        SyncWorkerPool<MyTask, Integer> pool = new SyncWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3));
 
         pool.enqueueAll(123, List.of(new MyTask(), new MyTask(), new MyTask()));
         pool.enqueueAll(456, List.of(new MyTask(), new MyTask(), new MyTask()));

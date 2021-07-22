@@ -11,20 +11,21 @@ public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<S
 
     private final Function<List<SingleResult>, GatheredResult> gatherFn;
 
-    public AbstractSyncWithResultWorkerPool(int maxWorker, Function<List<SingleResult>, GatheredResult> gatherFn) {
-        super(maxWorker);
+    public AbstractSyncWithResultWorkerPool(WorkerPoolSetup config, Function<List<SingleResult>, GatheredResult> gatherFn) {
+        super(config);
         this.gatherFn = gatherFn;
     }
 
     // NOTE: you can only wait one time, since we remove the group once you have the result
     GatheredResult waitResultUntilFinishInternal(GroupByType group) {
         GatheredResult rt = null;
-        if(requestTaskMap.containsKey(group) && !requestTaskMap.get(group).isEmpty()) {
+        if (requestTaskMap.existNotEmptyGroup(group)) {
             rt = gatherFn.apply(
-                    requestTaskMap.get(group).stream()
-                    .map(CompletableFuture::join)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList())
+                    requestTaskMap.getOrCreate(group).stream()
+                            .map(BaseTask::getFuture)
+                            .map(CompletableFuture::join)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList())
             );
             requestTaskMap.remove(group);
         }

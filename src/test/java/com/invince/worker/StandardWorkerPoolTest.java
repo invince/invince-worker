@@ -17,7 +17,7 @@ class StandardWorkerPoolTest {
 
     @Test
     void test() {
-        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(3);
+        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3));
 
         pool.enqueue(new MyTask());
         List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
@@ -39,8 +39,30 @@ class StandardWorkerPoolTest {
 
 
     @Test
+    void testNotLazyCreation() {
+        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3).setLazyCreation(false));
+        List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
+
+        assertEquals(3, workers.size());
+    }
+
+    @Test
+    void testNoWorker() {
+        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(0));
+
+        pool.enqueue(new MyTask());
+        List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
+
+        assertEquals(0, workers.size());
+
+        List tempWorkers = (List) ReflectionTestUtils.getField(pool, "tempWorkers");
+
+        assertEquals(0, tempWorkers.size());
+    }
+
+    @Test
     void testUnlimited() {
-        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(-1);
+        StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setUnlimited(true));
 
         pool.enqueue(new MyTask());
         List workers = (List) ReflectionTestUtils.getField(pool, "tempWorkers");

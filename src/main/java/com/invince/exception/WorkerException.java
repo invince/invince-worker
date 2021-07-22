@@ -1,4 +1,4 @@
-package com.invince.worker.exception;
+package com.invince.exception;
 
 public class WorkerException extends RuntimeException {
     public WorkerException(String message, Throwable e) {

@@ -1,4 +1,4 @@
-package com.invince.worker.exception;
+package com.invince.exception;
 
 public class WorkerError extends WorkerException{
 

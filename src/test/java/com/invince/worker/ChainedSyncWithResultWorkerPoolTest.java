@@ -35,7 +35,7 @@ class ChainedSyncWithResultWorkerPoolTest {
     private class Plus1WorkerPool extends ChainedSyncWithResultWorkerPool<Plus1Task, String, Integer, Integer> {
 
         public Plus1WorkerPool() {
-            super(2);
+            super(new WorkerPoolSetup().setMaxNbWorker(2));
         }
 
         @Override
@@ -55,7 +55,7 @@ class ChainedSyncWithResultWorkerPoolTest {
     private class Multiple2WorkerPool extends ChainedSyncWithResultWorkerPool<Multiple2Task, String, Integer, Integer> {
 
         public Multiple2WorkerPool() {
-            super(2);
+            super(new WorkerPoolSetup().setMaxNbWorker(2));
         }
 
         @Override
@@ -75,7 +75,7 @@ class ChainedSyncWithResultWorkerPoolTest {
     private class SquareWorkerPool extends ChainedSyncWithResultWorkerPool<SquareTask, String, Integer, Integer> {
 
         public SquareWorkerPool() {
-            super(2, val -> val.stream().reduce(0, Integer::sum));
+            super(new WorkerPoolSetup().setMaxNbWorker(2), val -> val.stream().reduce(0, Integer::sum));
         }
 
         @Override

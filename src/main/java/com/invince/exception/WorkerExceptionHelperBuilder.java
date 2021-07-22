@@ -1,4 +1,4 @@
-package com.invince.worker.exception;
+package com.invince.exception;
 
 import lombok.extern.slf4j.Slf4j;
 

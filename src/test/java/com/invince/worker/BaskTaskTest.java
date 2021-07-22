@@ -16,16 +16,16 @@ class BaskTaskTest {
 
         BaseTask task = newTask();
 
-        assertFalse(task.isDone());
+        assertFalse(task.getFuture().isDone());
         task.process();
-        assertTrue(task.isDone());
+        assertTrue(task.getFuture().isDone());
     }
 
     private BaseTask newTask(){
         return new BaseTask() {
             @Override
             void processInternal() {
-                this.complete(null);
+                this.getFuture().complete(null);
             }
         };
     }

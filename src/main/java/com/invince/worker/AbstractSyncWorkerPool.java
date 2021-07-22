@@ -1,22 +1,27 @@
 package com.invince.worker;
 
+import com.invince.worker.collections.ITaskGroups;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, SingleResult>
         extends StandardWorkerPool<T> {
 
-    protected final Map<GroupByType, ConcurrentLinkedQueue<T>> requestTaskMap = new ConcurrentHashMap<>();
+    protected ITaskGroups<GroupByType, T> requestTaskMap;
 
-    public AbstractSyncWorkerPool(int maxWorker) {
-        super(maxWorker);
+    public AbstractSyncWorkerPool(WorkerPoolSetup config) {
+        super(config);
+    }
+
+    @Override
+    void init() {
+        // init before newWorker
+        requestTaskMap =  config.getHelper().newTaskGroups(config.getName());
+        super.init();
     }
 
     public void enqueueAll(GroupByType group, Collection<T> tasks){
@@ -32,13 +37,14 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
         if(task == null) {
             return;
         }
-        requestTaskMap.putIfAbsent(group, new ConcurrentLinkedQueue<>());
-        requestTaskMap.get(group).add(task);
+        requestTaskMap.getOrCreate(group).add(task);
     }
 
     public final void waitUntilFinish(GroupByType group) {
-        if(requestTaskMap.containsKey(group) && !requestTaskMap.get(group).isEmpty()) {
-            CompletableFuture.allOf(requestTaskMap.get(group).toArray(new BaseTask<?>[0])).join();
+        if(requestTaskMap.existNotEmptyGroup(group)) {
+            // the custom RedissonCompletableFuture is not working well with CompletableFuture.allOf
+            requestTaskMap.getOrCreate(group).stream()
+                    .map(BaseTask::getFuture).forEach(CompletableFuture::join);
         }
         requestTaskMap.remove(group);
     }

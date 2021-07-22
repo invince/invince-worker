@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SyncWorkerPool<T extends AbstractTask, GroupByType> extends AbstractSyncWorkerPool<T, GroupByType, Void> {
 
-    public SyncWorkerPool(int maxWorker) {
-        super(maxWorker);
+    public SyncWorkerPool(WorkerPoolSetup config) {
+        super(config);
     }
 }

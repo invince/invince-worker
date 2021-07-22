@@ -4,6 +4,6 @@ public abstract class AbstractStandardTaskWithResult<R> extends AbstractTaskWith
 
     @Override
     final void processInternal() {
-        this.complete(doProcess());
+        getFuture().complete(doProcess());
     }
 }

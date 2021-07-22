@@ -7,7 +7,7 @@ public abstract class AbstractTask extends BaseTask<Void> {
     @Override
     final void processInternal() {
         doProcess();
-        this.complete(null);
+        getFuture().complete(null);
     }
 
     protected abstract void doProcess();

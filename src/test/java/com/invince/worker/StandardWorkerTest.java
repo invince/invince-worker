@@ -1,5 +1,9 @@
 package com.invince.worker;
 
+import com.invince.worker.collections.IProcessingTasks;
+import com.invince.worker.collections.IToDoTasks;
+import com.invince.worker.collections.local.DefaultProcessingTasks;
+import com.invince.worker.collections.local.DefaultToDoTasks;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,8 +22,8 @@ class StandardWorkerTest {
     @Test
     void test() throws InterruptedException {
 
-        BlockingQueue<BaseTask> toDo = new LinkedBlockingQueue<>();
-        ConcurrentHashMap<String, MyTask> processing = new ConcurrentHashMap<>();
+        IToDoTasks toDo = new DefaultToDoTasks();
+        IProcessingTasks<String, MyTask> processing = new DefaultProcessingTasks<>();
 
         StandardWorker<MyTask> worker = new StandardWorker<>(toDo, processing);
         ExecutorService executorService = Executors.newSingleThreadExecutor();

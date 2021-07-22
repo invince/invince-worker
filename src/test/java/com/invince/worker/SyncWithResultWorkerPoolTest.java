@@ -11,7 +11,7 @@ class SyncWithResultWorkerPoolTest {
     @Test
     void test() {
         SyncWithResultWorkerPool<MyTaskWithResult, String ,Integer, Integer> pool =
-                new SyncWithResultWorkerPool<>(3, list -> list.stream().reduce(0, Integer::sum));
+                new SyncWithResultWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3), list -> list.stream().reduce(0, Integer::sum));
 
         pool.enqueueAll("abc", List.of(new MyTaskWithResult(1), new MyTaskWithResult(2), new MyTaskWithResult(3)));
         pool.enqueueAll("def", List.of(new MyTaskWithResult(8), new MyTaskWithResult(2), new MyTaskWithResult(3)));

@@ -1,8 +1,9 @@
 package com.invince.worker;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.invince.worker.collections.SubscribableBlockingQueue;
-import com.invince.worker.collections.SubscribableConcurrentMap;
+import com.invince.worker.collections.IProcessingTasks;
+import com.invince.worker.collections.IToDoTasks;
+import com.invince.worker.collections.IWorkerPoolHelper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -20,55 +21,70 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class StandardWorkerPool<T extends BaseTask>  {
 
-    private final SubscribableBlockingQueue<BaseTask> toDo = new SubscribableBlockingQueue<>();
-    private final SubscribableConcurrentMap<String, T> processingTask = new SubscribableConcurrentMap<>();
+    protected IToDoTasks toDo;
+    protected IProcessingTasks<String, T> processingTask;
 
     private final List<StandardWorker<T>> permanentWorkers = new ArrayList<>();
     private final List<OneshotWorker<T>> tempWorkers = new ArrayList<>();
 
-    private final boolean unlimited;
-    private final int maxWorker;
     private final AtomicInteger permanentWorkerLaunched = new AtomicInteger(0);
     private final AtomicInteger tempWorkerLaunched = new AtomicInteger(0);
 
     private final ThreadPoolExecutor executor;
 
-    public StandardWorkerPool(int maxWorker) {
+    protected final WorkerPoolSetup config;
+
+    public StandardWorkerPool(WorkerPoolSetup config) {
+        this.config = config;
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat(getClass().getSimpleName() + "-thread-%d").build();
-        unlimited = maxWorker <= 0;
-        if(unlimited) {
+        if(config.isUnlimited()) {
             this.executor = (ThreadPoolExecutor) Executors.newCachedThreadPool(namedThreadFactory);
+        } else if (config.getMaxNbWorker() > 0){
+            this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(config.getMaxNbWorker(), namedThreadFactory);
         } else {
-            this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(maxWorker, namedThreadFactory);
+            this.executor =  null;
         }
-        this.maxWorker = maxWorker;
+        init();
+    }
+
+    void init() {
+        IWorkerPoolHelper ioc = config.getHelper();
+        this.toDo = ioc.newToDoTasks(config.getName());
+        this.processingTask = ioc.newProcessingTasks(config.getName());
+        if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
+            for (int i = 0; i < config.getMaxNbWorker(); i++) {
+                 newWorker();
+            }
+        }
     }
 
     public T enqueue(T task){
-        if(unlimited) {
+        if(config.isUnlimited()) {
             newTempWorker();
-        } else if(permanentWorkerLaunched.get() < maxWorker) {
+        } else if(permanentWorkerLaunched.get() < config.getMaxNbWorker()) {
             newWorker();
         }
-        this.toDo.add(task);
+        if(!this.toDo.add(task)){
+            log.error("Fail to add {} into to do list", task.getKey());
+        }
         if(tempWorkerLaunched.get() > 0) {
             log.debug("{}'s todo list has {} tasks. {} temp worker started",
-                    getClass().getSimpleName(), toDo.stream(), tempWorkerLaunched.get());
+                    getClass().getSimpleName(), toDo.size(), tempWorkerLaunched.get());
         } else {
             log.debug("{}'s todo list has {} tasks. {} permanent worker started",
-                    getClass().getSimpleName(), toDo.stream(), permanentWorkerLaunched.get());
+                    getClass().getSimpleName(), toDo.size(), permanentWorkerLaunched.get());
         }
         return task;
     }
 
 
     public boolean existTodoTask(String key) {
-        return key != null && toDo.stream().anyMatch(one -> key.equals(one.getKey()));
+        return toDo != null && toDo.exist(key);
     }
 
     public boolean existProcessingTask(String key) {
-        return processingTask.containsKey(key);
+        return processingTask != null && processingTask.exist(key);
     }
 
     public T removeTask(String key){
@@ -92,7 +108,7 @@ public class StandardWorkerPool<T extends BaseTask>  {
     }
 
     public void shutdown(boolean await) {
-        if(unlimited) {
+        if(config.isUnlimited()) {
             for (int i = 0; i < tempWorkers.size() * 2; i++) { // *2 to make sure
                 toDo.add(new FinishTask());
             }

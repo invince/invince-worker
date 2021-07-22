@@ -1,6 +1,6 @@
 package com.invince.worker;
 
-import com.invince.worker.exception.WorkerError;
+import com.invince.exception.WorkerError;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -35,7 +35,7 @@ public abstract class AbstractChainedTaskWithResult<GroupByType, SingleResultWit
             log.debug("Enqueue into the chained worker pool {}", nextPool.getClass().getSimpleName());
             nextPool.enqueue(groupBy, result);
         }
-        this.complete(result);
+        getFuture().complete(result);
     }
 
 }
