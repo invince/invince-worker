@@ -63,4 +63,11 @@ public abstract class ChainedSyncWithResultWorkerPool
         }
         return result;
     }
+
+    public void waitChainUntilFinish(GroupByType group) {
+        this.waitUntilFinish(group);
+        if(poolChain != null) {
+            this.poolChain.waitChainUntilFinish(group);
+        }
+    }
 }
