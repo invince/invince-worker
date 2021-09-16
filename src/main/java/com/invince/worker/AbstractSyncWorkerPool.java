@@ -1,11 +1,13 @@
 package com.invince.worker;
 
+import com.invince.spring.ContextHolder;
 import com.invince.worker.collections.ITaskGroups;
+import com.invince.worker.future.ICompletableTaskService;
+import com.invince.worker.future.local.DefaultCompletableTaskService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, SingleResult>
@@ -43,8 +45,12 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
     public final void waitUntilFinish(GroupByType group) {
         if(requestTaskMap.existNotEmptyGroup(group)) {
             // the custom RedissonCompletableFuture is not working well with CompletableFuture.allOf
-            requestTaskMap.getOrCreate(group).stream()
-                    .map(BaseTask::getFuture).forEach(CompletableFuture::join);
+            var completableTaskService = ContextHolder.getInstanceOrDefault(ICompletableTaskService.class, new DefaultCompletableTaskService());
+            requestTaskMap.getOrCreate(group)
+                    .forEach(task -> {
+                        task.getFuture().join();
+                        completableTaskService.release(task);
+                    });
         }
         requestTaskMap.remove(group);
     }

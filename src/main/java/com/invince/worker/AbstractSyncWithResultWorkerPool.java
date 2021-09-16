@@ -1,5 +1,9 @@
 package com.invince.worker;
 
+import com.invince.spring.ContextHolder;
+import com.invince.worker.future.ICompletableTaskService;
+import com.invince.worker.future.local.DefaultCompletableTaskService;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -20,10 +24,14 @@ public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<S
     GatheredResult waitResultUntilFinishInternal(GroupByType group) {
         GatheredResult rt = null;
         if (requestTaskMap.existNotEmptyGroup(group)) {
+            var completableTaskService = ContextHolder.getInstanceOrDefault(ICompletableTaskService.class, new DefaultCompletableTaskService());
             rt = gatherFn.apply(
                     requestTaskMap.getOrCreate(group).stream()
-                            .map(BaseTask::getFuture)
-                            .map(CompletableFuture::join)
+                            .map(task -> {
+                                SingleResult result = task.getFuture().join();
+                                completableTaskService.release(task);
+                                return result;
+                            })
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList())
             );

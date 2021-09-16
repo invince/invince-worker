@@ -11,8 +11,10 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import static com.invince.spring.WorkerConfig.PROFILE_REDIS;
+
 @Primary
-@Profile("redis")
+@Profile(PROFILE_REDIS)
 @Service
 public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
 

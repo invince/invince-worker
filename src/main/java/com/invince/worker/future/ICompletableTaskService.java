@@ -6,4 +6,6 @@ import java.util.concurrent.CompletableFuture;
 
 public interface ICompletableTaskService {
     <T> CompletableFuture<T> getOrWrap(BaseTask tBaseTask);
+
+    void release(BaseTask task);
 }
