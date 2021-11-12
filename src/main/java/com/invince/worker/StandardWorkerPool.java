@@ -60,11 +60,15 @@ public class StandardWorkerPool<T extends BaseTask>  {
     }
 
     public T enqueue(T task){
+        if(task == null) {
+            return null;
+        }
         if(config.isUnlimited()) {
             newTempWorker();
         } else if(permanentWorkerLaunched.get() < config.getMaxNbWorker()) {
             newWorker();
         }
+        task.onEnqueueSafe();
         if(!this.toDo.add(task)){
             log.error("Fail to add {} into to do list", task.getKey());
         }
@@ -129,11 +133,4 @@ public class StandardWorkerPool<T extends BaseTask>  {
         log.info("[StandardWorkerPool]: All task has been processed.");
     }
 
-    /**
-     * You can override this
-     * @param work
-     */
-    protected void putIntoTodo(T work) {
-        this.toDo.add(work);
-    }
 }

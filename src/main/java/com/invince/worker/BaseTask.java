@@ -19,12 +19,13 @@ public abstract class BaseTask<T> implements Serializable {
     protected ZonedDateTime queuedTime;
     protected ZonedDateTime processedTime;
 
-    private String defaultKey;
+    private final String defaultKey;
+
+    abstract void processInternal();
 
     public BaseTask() {
         this.queuedTime = ZonedDateTime.now();
         this.defaultKey = UUID.randomUUID().toString();
-
     }
 
     public final void process() {
@@ -34,10 +35,13 @@ public abstract class BaseTask<T> implements Serializable {
             throw new WorkerException("Task failed: " + getKey(), ex);
         });
         try{
+            safeCall(this::onStart);
             processInternal();
             this.processedTime = ZonedDateTime.now();
+            safeCall(this::onFinish);
         } catch (Exception e){
             log.error(e.getMessage(), e);
+            safeCall(() -> onError(e));
             future.completeExceptionally(new WorkerError(getKey() + " failed"));
         } finally {
             log.debug("{} takes: {}, Queued at: {}, Processed at: {}",
@@ -49,8 +53,6 @@ public abstract class BaseTask<T> implements Serializable {
         }
     }
 
-    abstract void processInternal();
-
     // you can override this
     public String getKey() {
         return defaultKey;
@@ -59,5 +61,24 @@ public abstract class BaseTask<T> implements Serializable {
     public CompletableFuture<T> getFuture() {
         return ContextHolder.getInstanceOrDefault(ICompletableTaskService.class, new DefaultCompletableTaskService())
                 .getOrWrap(this);
+    }
+
+    final void onEnqueueSafe() {
+        safeCall(this::onEnqueue);
+    }
+
+    protected void onEnqueue() {}
+    protected void onStart() {}
+    protected void onFinish() {}
+    protected void onError(Exception e) {}
+
+    private void safeCall(Runnable runnable) {
+        if(runnable != null) {
+            try {
+                runnable.run();
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
+            }
+        }
     }
 }
