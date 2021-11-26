@@ -19,7 +19,7 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
     }
 
     @Override
-    public void subscribe() {
+    public void subscribe(Runnable onFinishCallBack) {
         log.info("One Worker subscribed");
     }
 

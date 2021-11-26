@@ -12,7 +12,7 @@ public interface IToDoTasks {
 
     boolean add(BaseTask task);
 
-    void subscribe();
+    void subscribe(Runnable onFinishCallBack);
 
     boolean movedToProcess(String key);
 }

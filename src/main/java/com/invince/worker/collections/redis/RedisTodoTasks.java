@@ -1,5 +1,6 @@
 package com.invince.worker.collections.redis;
 
+import com.invince.util.SafeRunner;
 import com.invince.worker.BaseTask;
 import com.invince.worker.FinishTask;
 import com.invince.worker.collections.IToDoTasks;
@@ -8,6 +9,8 @@ import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RList;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -22,15 +25,14 @@ public class RedisTodoTasks implements IToDoTasks {
 
     private final String prefix;
 
-    private AtomicBoolean subscribed = new AtomicBoolean(false);
-
-    // because we need handle FinishTask only in local, but receive also task from redis
-
-    private BlockingQueue<BaseTask> combinedBQ = new LinkedBlockingQueue<>();
+    // You cannot put FinishTask into redis queue, you're not sure all worker takes it
+    private final Mono<FinishTask> finish;
+    private MonoSink<FinishTask> finishSink;
 
     public RedisTodoTasks(RedissonClient redisson, String prefix) {
         this.redisson = redisson;
         this.prefix = prefix;
+        this.finish = Mono.create(sink -> finishSink = sink);
     }
 
 
@@ -46,13 +48,19 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public BaseTask take() throws InterruptedException {
-        return combinedBQ.take();
+        return getRedisBQ().take();
     }
 
     @Override
     public boolean add(BaseTask task) {
-        if(task instanceof FinishTask) {
-            return combinedBQ.add(task);
+        if (task instanceof FinishTask) {
+            if (finishSink != null) {
+                this.finishSink.success((FinishTask) task);
+                return true;
+            } else {
+                log.debug("Fail to add finishTask, the blocking queue is not initialized correctly");
+                return false;
+            }
         } else {
             boolean rt = getRedisBQ().add(task);
             RList<String> todoKeyCopy = redisson.getList(prefix + TODO_LIST_KEY);
@@ -64,16 +72,11 @@ public class RedisTodoTasks implements IToDoTasks {
     }
 
     @Override
-    public void subscribe() {
+    public void subscribe(Runnable finishCallback) {
         log.info("One worker subscribed");
-        if(!subscribed.get()){
-            getRedisBQ().subscribeOnElements(task -> { // only one receive this
-                log.debug("Task {} taken from redis todo blocking queue", task.getKey());
-                combinedBQ.add(task);
-            });
-            subscribed.set(true);
-        }
-
+        finish.subscribe(finishTask -> {
+            SafeRunner.run(finishCallback);
+        });
     }
 
     @Override

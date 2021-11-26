@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.invince.exception.WorkerError;
 import com.invince.exception.WorkerException;
 import com.invince.spring.ContextHolder;
+import com.invince.util.SafeRunner;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,13 +36,13 @@ public abstract class BaseTask<T> implements Serializable {
             throw new WorkerException("Task failed: " + getKey(), ex);
         });
         try{
-            safeCall(this::onStart);
+            SafeRunner.run(this::onStart);
             processInternal();
             this.processedTime = ZonedDateTime.now();
-            safeCall(this::onFinish);
+            SafeRunner.run(this::onFinish);
         } catch (Exception e){
             log.error(e.getMessage(), e);
-            safeCall(() -> onError(e));
+            SafeRunner.run(() -> onError(e));
             future.completeExceptionally(new WorkerError(getKey() + " failed"));
         } finally {
             log.debug("{} takes: {}, Queued at: {}, Processed at: {}",
@@ -64,7 +65,7 @@ public abstract class BaseTask<T> implements Serializable {
     }
 
     final void onEnqueueSafe() {
-        safeCall(this::onEnqueue);
+        SafeRunner.run(this::onEnqueue);
     }
 
     protected void onEnqueue() {}
@@ -72,13 +73,4 @@ public abstract class BaseTask<T> implements Serializable {
     protected void onFinish() {}
     protected void onError(Exception e) {}
 
-    private void safeCall(Runnable runnable) {
-        if(runnable != null) {
-            try {
-                runnable.run();
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-            }
-        }
-    }
 }

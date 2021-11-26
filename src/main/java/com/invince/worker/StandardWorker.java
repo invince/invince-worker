@@ -24,7 +24,12 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                 .nonNull(toDo, processing);
         this.toDo = toDo;
         this.processing = processing;
-        this.toDo.subscribe();
+        this.toDo.subscribe(()-> {
+            if(!isDone() && !isCompletedExceptionally() && !isCancelled()) {
+                log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
+                this.complete(null);
+            }
+        });
     }
 
 

@@ -22,7 +22,12 @@ public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> i
                 .nonNull(toDo, processing);
         this.toDo = toDo;
         this.processing = processing;
-        this.toDo.subscribe();
+        this.toDo.subscribe(()-> {
+            if(!isDone() && !isCompletedExceptionally() && !isCancelled()) {
+                log.info("[OneshotWorker]: task finishes");
+                this.complete(null);
+            }
+        });
     }
 
 
