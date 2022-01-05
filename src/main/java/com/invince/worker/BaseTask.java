@@ -45,10 +45,11 @@ public abstract class BaseTask<T> implements Serializable {
             SafeRunner.run(() -> onError(e));
             future.completeExceptionally(new WorkerError(getKey() + " failed"));
         } finally {
-            log.debug("{} takes: {}, Queued at: {}, Processed at: {}",
-                    getClass().getSimpleName(), timer.stop(), queuedTime, processedTime);
+            log.debug("{} {} takes: {}, Queued at: {}, Processed at: {}",
+                    getClass().getSimpleName(), getKey(), timer.stop(), queuedTime, processedTime);
             if(!future.isDone() && !future.isCancelled() && !future.isCompletedExceptionally()) {
-                log.error("{} is not done, not completed exceptionally and not cancelled, please check your code");
+                log.error("{} {} is not done, not completed exceptionally and not cancelled, please check your code",
+                        getClass().getSimpleName(), getKey());
                 future.completeExceptionally(new WorkerError(getKey() + " failed"));
             }
         }
