@@ -2,7 +2,6 @@ package com.invince.worker.collections.redis;
 
 import com.invince.worker.BaseTask;
 import com.invince.worker.collections.ITaskGroups;
-import org.redisson.api.RMap;
 import org.redisson.api.RQueue;
 import org.redisson.api.RedissonClient;
 

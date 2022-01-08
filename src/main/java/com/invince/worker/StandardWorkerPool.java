@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StandardWorkerPool<T extends BaseTask>  {
 
     protected IToDoTasks toDo;
-    protected IProcessingTasks<String, T> processingTask;
+    protected IProcessingTasks<String, T> processingTasks;
 
     private final List<StandardWorker<T>> permanentWorkers = new ArrayList<>();
     private final List<OneshotWorker<T>> tempWorkers = new ArrayList<>();
@@ -51,7 +51,7 @@ public class StandardWorkerPool<T extends BaseTask>  {
     void init() {
         IWorkerPoolHelper ioc = config.getHelper();
         this.toDo = ioc.newToDoTasks(config.getName());
-        this.processingTask = ioc.newProcessingTasks(config.getName());
+        this.processingTasks = ioc.newProcessingTasks(config.getName());
         if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
             for (int i = 0; i < config.getMaxNbWorker(); i++) {
                  newWorker();
@@ -88,15 +88,25 @@ public class StandardWorkerPool<T extends BaseTask>  {
     }
 
     public boolean existProcessingTask(String key) {
-        return processingTask != null && processingTask.exist(key);
+        return processingTasks != null && processingTasks.exist(key);
     }
 
     public T removeTask(String key){
-        return processingTask.remove(key);
+        return processingTasks.remove(key);
+    }
+
+    public void cancelTask(String key) {
+        if (toDo.exist(key)) {
+            toDo.cancel(key);
+        } else if (processingTasks.exist(key)) {
+            processingTasks.cancel(key);
+        } else {
+            log.debug("Task {} is neither in toDo list, nor in progress, cannot cancel it", key);
+        }
     }
 
     private void newWorker() {
-        StandardWorker<T> worker = new StandardWorker<>(toDo, processingTask);
+        StandardWorker<T> worker = new StandardWorker<>(toDo, processingTasks);
         permanentWorkers.add(worker);
         executor.execute(worker);
         log.debug("{} new worker created", getClass().getSimpleName());
@@ -104,7 +114,7 @@ public class StandardWorkerPool<T extends BaseTask>  {
     }
 
     private void newTempWorker() {
-        OneshotWorker<T> worker = new OneshotWorker<>(toDo, processingTask);
+        OneshotWorker<T> worker = new OneshotWorker<>(toDo, processingTasks);
         tempWorkers.add(worker);
         executor.execute(worker);
         log.debug("{} new temp worker created", getClass().getSimpleName());

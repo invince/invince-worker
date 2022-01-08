@@ -11,4 +11,6 @@ public interface IProcessingTasks<K, V extends BaseTask> {
     boolean exist(K key);
 
     int size();
+
+    void cancel(K key);
 }

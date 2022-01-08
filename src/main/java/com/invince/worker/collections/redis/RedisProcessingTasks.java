@@ -5,6 +5,7 @@ import com.invince.worker.collections.IProcessingTasks;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RMap;
 import org.redisson.api.RedissonClient;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingTasks<K, V> {
@@ -38,6 +39,16 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public boolean exist(K key) {
         return getRedisMap().containsKey(key);
+    }
+
+    @Override
+    public void cancel(K key) {
+        if (!StringUtils.isEmpty(key)) {
+            var task = getRedisMap().get(key);
+            if (task != null) {
+                task.cancelProcessing();
+            }
+        }
     }
 
     @Override

@@ -24,8 +24,8 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                 .nonNull(toDo, processing);
         this.toDo = toDo;
         this.processing = processing;
-        this.toDo.subscribe(()-> {
-            if(!isDone() && !isCompletedExceptionally() && !isCancelled()) {
+        this.toDo.subscribe(() -> {
+            if (!isDone() && !isCompletedExceptionally() && !isCancelled()) {
                 log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
                 this.complete(null);
             }
@@ -40,15 +40,20 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
             do {
                 task = toDo.take();
                 if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
-                    log.debug("Task {} starts at {}, stills has {} tasks in todo list",
-                            task.getKey(), ZonedDateTime.now(), toDo.size());
-                    processing.put(task.getKey(), (T) task);
-                    toDo.movedToProcess(task.getKey());
-                    task.process();
-                    processing.remove(task.getKey());
-                    counter++;
-                    log.debug("Task {} finishes at {}, stills has {} tasks in processing",
-                            task.getKey(), ZonedDateTime.now(), processing.size());
+                    if (task.isToBeCancelled()) {
+                        log.debug("Task {} has been already cancelled, we won't process it, " +
+                                "stills has {} tasks in todo list", task.getKey(), toDo.size());
+                    } else {
+                        log.debug("Task {} starts at {}, stills has {} tasks in todo list",
+                                task.getKey(), ZonedDateTime.now(), toDo.size());
+                        processing.put(task.getKey(), (T) task);
+                        toDo.movedToProcess(task.getKey());
+                        task.process();
+                        processing.remove(task.getKey());
+                        counter++;
+                        log.debug("Task {} finishes at {}, stills has {} tasks in processing",
+                                task.getKey(), ZonedDateTime.now(), processing.size());
+                    }
                 }
             } while (task != null && !(task instanceof FinishTask));
         } catch (InterruptedException e) {

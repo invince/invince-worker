@@ -22,12 +22,12 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
     @Override
     void init() {
         // init before newWorker
-        requestTaskMap =  config.getHelper().newTaskGroups(config.getName());
+        requestTaskMap = config.getHelper().newTaskGroups(config.getName());
         super.init();
     }
 
-    public void enqueueAll(GroupByType group, Collection<T> tasks){
-        if(tasks != null) {
+    public void enqueueAll(GroupByType group, Collection<T> tasks) {
+        if (tasks != null) {
             tasks.stream().filter(Objects::nonNull).forEach(one -> {
                 enqueue(one);// this put the task in the blocking queue
                 addIntoGroup(group, one); // this put task in the group, so we can wait result for a group
@@ -36,14 +36,29 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
     }
 
     final void addIntoGroup(GroupByType group, T task) {
-        if(task == null) {
+        if (task == null) {
             return;
         }
         requestTaskMap.getOrCreate(group).add(task);
     }
 
+    public void cancelGroup(GroupByType group) {
+        if (requestTaskMap.existNotEmptyGroup(group)) {
+            requestTaskMap.getOrCreate(group).forEach(task -> {
+                var key = task.getKey();
+                if (key != null) {
+                    if (toDo.exist(key)) {
+                        toDo.cancel(key);
+                    } else if (processingTasks.exist(key)) {
+                        processingTasks.cancel(key);
+                    }
+                }
+            });
+        }
+    }
+
     public final void waitUntilFinish(GroupByType group) {
-        if(requestTaskMap.existNotEmptyGroup(group)) {
+        if (requestTaskMap.existNotEmptyGroup(group)) {
             // the custom RedissonCompletableFuture is not working well with CompletableFuture.allOf
             var completableTaskService = ContextHolder.getInstanceOrDefault(ICompletableTaskService.class, new DefaultCompletableTaskService());
             requestTaskMap.getOrCreate(group)

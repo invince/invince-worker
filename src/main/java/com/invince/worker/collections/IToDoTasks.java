@@ -15,4 +15,6 @@ public interface IToDoTasks {
     void subscribe(Runnable onFinishCallBack);
 
     boolean movedToProcess(String key);
+
+    void cancel(String key);
 }

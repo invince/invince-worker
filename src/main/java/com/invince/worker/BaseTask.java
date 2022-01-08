@@ -7,6 +7,8 @@ import com.invince.spring.ContextHolder;
 import com.invince.util.SafeRunner;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
@@ -21,6 +23,8 @@ public abstract class BaseTask<T> implements Serializable {
     protected ZonedDateTime processedTime;
 
     private final String defaultKey;
+    @Setter @Getter
+    private boolean toBeCancelled = false;
 
     abstract void processInternal();
 
@@ -74,4 +78,5 @@ public abstract class BaseTask<T> implements Serializable {
     protected void onFinish() {}
     protected void onError(Exception e) {}
 
+    public void cancelProcessing() {};
 }

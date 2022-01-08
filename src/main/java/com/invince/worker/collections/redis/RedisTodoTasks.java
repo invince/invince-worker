@@ -12,15 +12,12 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 @Slf4j
 public class RedisTodoTasks implements IToDoTasks {
 
     private static final String TODO_LIST = "$TODO_LIST$";
     private static final String TODO_LIST_KEY = "$TODO_LIST_KEY$";
+    private static final String KEYS_TO_CANCEL = "$KEYS_TO_CANCEL$";
     private final RedissonClient redisson;
 
     private final String prefix;
@@ -48,7 +45,19 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public BaseTask take() throws InterruptedException {
-        return getRedisBQ().take();
+        var task =  getRedisBQ().take();
+        if(redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
+            task.setToBeCancelled(true);
+            redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
+        }
+        return task;
+    }
+
+    @Override
+    public void cancel(String key) {
+        if (!StringUtils.isEmpty(key)) {
+            redisson.getList(prefix + KEYS_TO_CANCEL).add(key);
+        }
     }
 
     @Override
