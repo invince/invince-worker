@@ -43,7 +43,7 @@ public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> i
                     log.debug("Task {} starts at {}, stills has {} tasks in todo list",
                             task.getKey(), ZonedDateTime.now(), toDo.size());
                     processing.put(task.getKey(), (T) task);
-                    toDo.movedToProcess(task.getKey());
+                    toDo.moveToProcessing(task.getKey());
                     task.process();
                     processing.remove(task.getKey());
                     log.debug("Task {} finishes at {}, stills has {} tasks in processing",

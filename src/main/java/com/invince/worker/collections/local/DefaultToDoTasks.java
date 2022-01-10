@@ -27,7 +27,7 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
     }
 
     @Override
-    public boolean movedToProcess(String key) {
+    public boolean moveToProcessing(String key) {
         return toDoKeyCopy.remove(key);
     }
 

@@ -89,7 +89,7 @@ public class RedisTodoTasks implements IToDoTasks {
     }
 
     @Override
-    public boolean movedToProcess(String key) {
+    public boolean moveToProcessing(String key) {
         RList<String> todoKeyCopy = redisson.getList(prefix + TODO_LIST_KEY);
         return todoKeyCopy.remove(key);
     }
