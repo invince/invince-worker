@@ -47,7 +47,7 @@ public class RedisTodoTasks implements IToDoTasks {
     public BaseTask take() throws InterruptedException {
         var task =  getRedisBQ().take();
         if(redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
-            task.setToBeCancelled(true);
+            task.cancelToDo();
             redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
         }
         return task;

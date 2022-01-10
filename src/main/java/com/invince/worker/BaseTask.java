@@ -15,6 +15,7 @@ import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public abstract class BaseTask<T> implements Serializable {
@@ -23,8 +24,7 @@ public abstract class BaseTask<T> implements Serializable {
     protected ZonedDateTime processedTime;
 
     private final String defaultKey;
-    @Setter @Getter
-    private boolean toBeCancelled = false;
+    private final AtomicBoolean toBeCancelled = new AtomicBoolean(false);
 
     abstract void processInternal();
 
@@ -77,6 +77,14 @@ public abstract class BaseTask<T> implements Serializable {
     protected void onStart() {}
     protected void onFinish() {}
     protected void onError(Exception e) {}
+
+    public boolean isToBeCancelled() {
+        return toBeCancelled.get();
+    }
+
+    public void cancelToDo() {
+        toBeCancelled.set(true);
+    }
 
     public void cancelProcessing() {};
 }

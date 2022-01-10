@@ -42,7 +42,7 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
     public BaseTask take() throws InterruptedException {
         var task = super.take();
         if(keysToCancel.contains(task.getKey())) {
-            task.setToBeCancelled(true);
+            task.cancelToDo();
             keysToCancel.remove(task.getKey());
         }
         return task;
