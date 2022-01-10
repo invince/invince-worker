@@ -7,8 +7,6 @@ import com.invince.spring.ContextHolder;
 import com.invince.util.SafeRunner;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;

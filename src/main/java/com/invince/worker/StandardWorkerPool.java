@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <T>
  */
 @Slf4j
-public class StandardWorkerPool<T extends BaseTask>  {
+public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     protected IToDoTasks toDo;
     protected IProcessingTasks<String, T> processingTasks;
@@ -59,6 +59,22 @@ public class StandardWorkerPool<T extends BaseTask>  {
         }
     }
 
+    @Override
+    public int getToDoListSize() {
+        return toDo != null ? toDo.size() : 0;
+    }
+
+    @Override
+    public int getProcessingListSize() {
+        return processingTasks != null ? processingTasks.size() : 0;
+    }
+
+    @Override
+    public int getPermanentWorkerSize() {
+        return permanentWorkers.size();
+    }
+
+    @Override
     public T enqueue(T task){
         if(task == null) {
             return null;
@@ -83,18 +99,22 @@ public class StandardWorkerPool<T extends BaseTask>  {
     }
 
 
-    public boolean existTodoTask(String key) {
+    @Override
+    public boolean existToDoTask(String key) {
         return toDo != null && toDo.exist(key);
     }
 
+    @Override
     public boolean existProcessingTask(String key) {
         return processingTasks != null && processingTasks.exist(key);
     }
 
+    @Override
     public T removeTask(String key){
         return processingTasks.remove(key);
     }
 
+    @Override
     public void cancelTask(String key) {
         if (toDo.exist(key)) {
             toDo.cancel(key);
@@ -121,6 +141,7 @@ public class StandardWorkerPool<T extends BaseTask>  {
         tempWorkerLaunched.incrementAndGet();
     }
 
+    @Override
     public void shutdown(boolean await) {
         if(config.isUnlimited()) {
             for (int i = 0; i < tempWorkers.size() * 2; i++) { // *2 to make sure

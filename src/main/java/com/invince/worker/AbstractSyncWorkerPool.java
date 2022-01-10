@@ -3,6 +3,7 @@ package com.invince.worker;
 import com.invince.spring.ContextHolder;
 import com.invince.worker.collections.ITaskGroups;
 import com.invince.worker.future.ICompletableTaskService;
+import com.invince.worker.future.ISyncWorkerPool;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -11,7 +12,7 @@ import java.util.Objects;
 
 @Slf4j
 class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, SingleResult>
-        extends StandardWorkerPool<T> {
+        extends StandardWorkerPool<T> implements ISyncWorkerPool<T, GroupByType, SingleResult> {
 
     protected ITaskGroups<GroupByType, T> requestTaskMap;
 
@@ -26,6 +27,7 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
         super.init();
     }
 
+    @Override
     public void enqueueAll(GroupByType group, Collection<T> tasks) {
         if (tasks != null) {
             tasks.stream().filter(Objects::nonNull).forEach(one -> {
@@ -42,6 +44,7 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
         requestTaskMap.getOrCreate(group).add(task);
     }
 
+    @Override
     public void cancelGroup(GroupByType group) {
         if (requestTaskMap.existNotEmptyGroup(group)) {
             requestTaskMap.getOrCreate(group).forEach(task -> {
