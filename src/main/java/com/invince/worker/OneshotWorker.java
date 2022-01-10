@@ -37,16 +37,17 @@ public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> i
             BaseTask task = toDo.take();
             if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
                 if (task.isToBeCancelled()) {
-                    log.debug("Task {} has been already cancelled, we won't process it, " +
-                            "stills has {} tasks in todo list", task.getKey(), toDo.size());
+                    log.debug("{} {} has been already cancelled, we won't process it, " +
+                            "stills has {} tasks in todo list", task.getClass().getSimpleName(),
+                            task.getKey(), toDo.size());
                 } else {
-                    log.debug("Task {} starts at {}, stills has {} tasks in todo list",
+                    log.debug("{} {} starts at {}, stills has {} tasks in todo list", task.getClass().getSimpleName(),
                             task.getKey(), ZonedDateTime.now(), toDo.size());
                     processing.put(task.getKey(), (T) task);
                     toDo.moveToProcessing(task.getKey());
                     task.process();
                     processing.remove(task.getKey());
-                    log.debug("Task {} finishes at {}, stills has {} tasks in processing",
+                    log.debug("{} {} finishes at {}, stills has {} tasks in processing", task.getClass().getSimpleName(),
                             task.getKey(), ZonedDateTime.now(), processing.size());
                 }
             }
