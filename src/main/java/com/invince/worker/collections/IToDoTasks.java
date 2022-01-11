@@ -17,4 +17,6 @@ public interface IToDoTasks {
     boolean moveToProcessing(String key);
 
     void cancel(String key);
+
+    default void close() {}
 }

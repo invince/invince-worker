@@ -1,6 +1,7 @@
 package com.invince.worker;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.invince.util.SafeRunner;
 import com.invince.worker.collections.IProcessingTasks;
 import com.invince.worker.collections.IToDoTasks;
 import com.invince.worker.collections.IWorkerPoolHelper;
@@ -158,6 +159,9 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
                 CompletableFuture.allOf(permanentWorkers.toArray(new StandardWorker[0])).join();
             }
         }
+        SafeRunner.run(toDo::close);
+        SafeRunner.run(processingTasks::close);
+
         if(executor != null) {
             this.executor.shutdown();
         }

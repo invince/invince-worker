@@ -1,6 +1,7 @@
 package com.invince.worker;
 
 import com.invince.spring.ContextHolder;
+import com.invince.util.SafeRunner;
 import com.invince.worker.collections.ITaskGroups;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.ISyncWorkerPool;
@@ -60,6 +61,7 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
         }
     }
 
+    @Override
     public final void waitUntilFinish(GroupByType group) {
         if (requestTaskMap.existNotEmptyGroup(group)) {
             // the custom RedissonCompletableFuture is not working well with CompletableFuture.allOf
@@ -71,5 +73,11 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
                     });
         }
         requestTaskMap.remove(group);
+    }
+
+    @Override
+    public void shutdown(boolean await) {
+        super.shutdown(await);
+        SafeRunner.run(requestTaskMap::close);
     }
 }

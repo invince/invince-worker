@@ -11,4 +11,6 @@ public interface ITaskGroups <GroupByType, T extends BaseTask> {
     boolean existNotEmptyGroup(GroupByType group);
 
     Queue<T> remove(GroupByType group);
+
+    default void close() {}
 }
