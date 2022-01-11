@@ -55,8 +55,8 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public BaseTask take() throws InterruptedException {
-        var task =  getRedisBQ().take();
-        if(redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
+        var task = getRedisBQ().take();
+        if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
             task.cancelToDo();
             redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
         }
@@ -99,18 +99,27 @@ public class RedisTodoTasks implements IToDoTasks {
 
     // reduce usage of redis, otherwise every worker do RBlockingQueue.take
     private void listenToRBlockingQueue() {
-        if(! listenerLaunched.get()) {
+        if (!listenerLaunched.get()) {
             listenerExecutor = Executors.newSingleThreadExecutor();
             listenerExecutor.execute(() -> {
                 try {
                     BaseTask task;
                     do {
-                        task =  getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
-                        if(redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
-                            task.cancelToDo();
-                            redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
+                        try {
+                            task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
+                            if(task != null) { // normally impossible null
+                                if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
+                                    task.cancelToDo();
+                                    redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
+                                }
+                                blockingQueueLocal.add(task);
+                            }
+                        } catch (Exception e) {
+                            if (e instanceof InterruptedException) {
+                                throw e;
+                            }
+                            log.error(e.getMessage(), e);
                         }
-                        blockingQueueLocal.add(task);
                     } while (listenerLaunched.get());
                 } catch (InterruptedException e) {
                     log.error(e.getMessage(), e);
@@ -129,7 +138,7 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public void close() {
-        if(listenerLaunched.get() && listenerExecutor != null) {
+        if (listenerLaunched.get() && listenerExecutor != null) {
             SafeRunner.run(listenerExecutor::shutdown);
         }
     }
