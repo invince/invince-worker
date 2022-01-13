@@ -15,7 +15,7 @@ public class DefaultWorkerPoolHelper implements IWorkerPoolHelper {
     }
 
     @Override
-    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String name) {
+    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String name, String poolUid) {
         return new DefaultProcessingTasks<>();
     }
 

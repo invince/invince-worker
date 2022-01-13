@@ -31,7 +31,7 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
     }
 
     @Override
-    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String name) {
+    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String name, String poolUid) {
         return new RedisProcessingTasks<>(client, name);
     }
 

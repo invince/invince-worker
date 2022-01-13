@@ -14,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public abstract class BaseTask<T> implements Serializable {
@@ -26,11 +28,21 @@ public abstract class BaseTask<T> implements Serializable {
     private final String defaultKey;
     private boolean toBeCancelled = false;
 
+
     @Accessors(chain = true)
     @Setter
     private boolean useCustomCompletableTaskService = false; // for ex, you can use redis version, but be careful, that will creates a lot of connection (almost one per task) to redis
 
+    protected transient AtomicBoolean toContinue = new AtomicBoolean(true);
+
     abstract void processInternal();
+    protected void onEnqueue() {}
+    protected void onStart() {}
+    protected void onFinish() {}
+    protected void onError(Exception e) {}
+
+    protected void onCancelToDo() {}
+    protected void onCancelProcessing() {}
 
     public BaseTask() {
         this.queuedTime = ZonedDateTime.now();
@@ -50,6 +62,13 @@ public abstract class BaseTask<T> implements Serializable {
             SafeRunner.run(this::onFinish);
             this.processedTime = ZonedDateTime.now();
             log.debug("{} {} takes: {}, Queued at: {}, Starts at: {}, Processed at: {}",
+                    getClass().getSimpleName(), getKey(), timer.stop(), queuedTime, startTime, processedTime);
+        } catch (CancellationException e) {
+            log.error(e.getMessage(), e);
+            SafeRunner.run(() -> onError(e));
+            future.completeExceptionally(new WorkerError(getKey() + " cancelled"));
+            this.processedTime = ZonedDateTime.now();
+            log.debug("{} {} takes: {}, Queued at: {}, Starts at: {}, but cancelled at: {}",
                     getClass().getSimpleName(), getKey(), timer.stop(), queuedTime, startTime, processedTime);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -82,28 +101,24 @@ public abstract class BaseTask<T> implements Serializable {
         SafeRunner.run(this::onEnqueue);
     }
 
-    protected void onEnqueue() {
-    }
-
-    protected void onStart() {
-    }
-
-    protected void onFinish() {
-    }
-
-    protected void onError(Exception e) {
-    }
-
     public boolean isToBeCancelled() {
         return toBeCancelled;
     }
 
-    public void cancelToDo() {
+    public final void cancelToDo() {
         toBeCancelled = true;
+        onCancelToDo();
     }
 
-    public void cancelProcessing() {
+    public final void cancelProcessing() {
+        toContinue.set(false);
+        onCancelProcessing();
     }
 
-    ;
+    // you can use this to break your process inside processInternal
+    protected void checkPoint() {
+        if(!toContinue.get()) {
+            throw new CancellationException();
+        }
+    }
 }

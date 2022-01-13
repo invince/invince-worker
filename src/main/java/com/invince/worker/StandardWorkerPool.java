@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -34,6 +35,8 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
     private final ThreadPoolExecutor executor;
 
     protected final WorkerPoolSetup config;
+    protected final String poolUid;
+
 
     public StandardWorkerPool(WorkerPoolSetup config) {
         this.config = config;
@@ -47,12 +50,13 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
             this.executor =  null;
         }
         init();
+        poolUid = getName() + "-" + UUID.randomUUID();
     }
 
     void init() {
         IWorkerPoolHelper ioc = config.getHelper();
         this.toDo = ioc.newToDoTasks(config.getName());
-        this.processingTasks = ioc.newProcessingTasks(config.getName());
+        this.processingTasks = ioc.newProcessingTasks(config.getName(), poolUid);
         if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
             for (int i = 0; i < config.getMaxNbWorker(); i++) {
                  newWorker();
