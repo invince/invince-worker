@@ -1,6 +1,7 @@
 package com.invince.worker;
 
 import com.google.common.base.Stopwatch;
+import com.invince.exception.InProgressingTaskCancelled;
 import com.invince.exception.WorkerError;
 import com.invince.exception.WorkerException;
 import com.invince.spring.ContextHolder;
@@ -33,7 +34,7 @@ public abstract class BaseTask<T> implements Serializable {
     @Setter
     private boolean useCustomCompletableTaskService = false; // for ex, you can use redis version, but be careful, that will creates a lot of connection (almost one per task) to redis
 
-    protected transient AtomicBoolean toContinue = new AtomicBoolean(true);
+    protected transient AtomicBoolean toContinue ;
 
     abstract void processInternal();
     protected void onEnqueue() {}
@@ -63,10 +64,10 @@ public abstract class BaseTask<T> implements Serializable {
             this.processedTime = ZonedDateTime.now();
             log.debug("{} {} takes: {}, Queued at: {}, Starts at: {}, Processed at: {}",
                     getClass().getSimpleName(), getKey(), timer.stop(), queuedTime, startTime, processedTime);
-        } catch (CancellationException e) {
+        } catch (InProgressingTaskCancelled | CancellationException e) {
             log.error(e.getMessage(), e);
-            SafeRunner.run(() -> onError(e));
-            future.completeExceptionally(new WorkerError(getKey() + " cancelled"));
+            SafeRunner.run(this:: onCancelProcessing);
+            future.completeExceptionally(new InProgressingTaskCancelled(getKey()));
             this.processedTime = ZonedDateTime.now();
             log.debug("{} {} takes: {}, Queued at: {}, Starts at: {}, but cancelled at: {}",
                     getClass().getSimpleName(), getKey(), timer.stop(), queuedTime, startTime, processedTime);
@@ -105,20 +106,35 @@ public abstract class BaseTask<T> implements Serializable {
         return toBeCancelled;
     }
 
-    public final void cancelToDo() {
+    public synchronized final void cancelToDo() {
         toBeCancelled = true;
         onCancelToDo();
     }
 
-    public final void cancelProcessing() {
+    public synchronized final void cancelProcessing() {
+        if(toContinue == null) {
+            initToContinue();
+        }
         toContinue.set(false);
-        onCancelProcessing();
     }
 
     // you can use this to break your process inside processInternal
     protected void checkPoint() {
-        if(!toContinue.get()) {
-            throw new CancellationException();
+        if(!toContinue()) {
+            throw new InProgressingTaskCancelled(getKey());
+        }
+    }
+
+    private boolean toContinue() {
+        if(toContinue == null) {
+            initToContinue();
+        }
+        return toContinue.get();
+    }
+
+    private synchronized void initToContinue() {
+        if(toContinue == null) {
+            toContinue = new AtomicBoolean(true);
         }
     }
 }

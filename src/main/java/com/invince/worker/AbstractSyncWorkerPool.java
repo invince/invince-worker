@@ -1,5 +1,6 @@
 package com.invince.worker;
 
+import com.invince.exception.TaskCancelled;
 import com.invince.spring.ContextHolder;
 import com.invince.util.SafeRunner;
 import com.invince.worker.collections.ITaskGroups;
@@ -68,7 +69,11 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
             var completableTaskService = ContextHolder.getInstanceOrDefault(ICompletableTaskService.class, new DefaultCompletableTaskService());
             requestTaskMap.getOrCreate(group)
                     .forEach(task -> {
-                        task.getFuture().join();
+                        try {
+                            task.getFuture().join();
+                        } catch (TaskCancelled e) {
+                            log.warn("Task {} cancelled, result will be null", e.getKey());
+                        }
                         completableTaskService.release(task);
                     });
         }

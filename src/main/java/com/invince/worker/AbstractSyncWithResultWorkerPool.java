@@ -1,14 +1,17 @@
 package com.invince.worker;
 
+import com.invince.exception.TaskCancelled;
 import com.invince.spring.ContextHolder;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<SingleResult>, GroupByType, SingleResult, GatheredResult>
         extends AbstractSyncWorkerPool<T, GroupByType, SingleResult> {
 
@@ -27,7 +30,12 @@ public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<S
             rt = gatherFn.apply(
                     requestTaskMap.getOrCreate(group).stream()
                             .map(task -> {
-                                SingleResult result = task.getFuture().join();
+                                SingleResult result = null;
+                                try {
+                                    result = task.getFuture().join();
+                                } catch (TaskCancelled e) {
+                                    log.warn("Task {} cancelled, result will be null", e.getKey());
+                                }
                                 completableTaskService.release(task);
                                 return result;
                             })

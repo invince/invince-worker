@@ -121,11 +121,18 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     @Override
     public void cancelTask(String key) {
+        boolean cancelled = false;
         if (toDo.exist(key)) {
+            log.debug("Task {} in todo list to be cancelled", key);
             toDo.cancel(key);
-        } else if (processingTasks.exist(key)) {
+            cancelled = true;
+        }
+        if (processingTasks.exist(key)) {
+            log.debug("Task {} in progress to be cancelled", key);
             processingTasks.cancel(key);
-        } else {
+            cancelled = true;
+        }
+        if(!cancelled){
             log.debug("Task {} is neither in toDo list, nor in progress, cannot cancel it", key);
         }
     }

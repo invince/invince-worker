@@ -1,5 +1,6 @@
 package com.invince.worker;
 
+import com.invince.exception.ToDoTaskCancelled;
 import com.invince.exception.WorkerError;
 import com.invince.worker.collections.IProcessingTasks;
 import com.invince.worker.collections.IToDoTasks;
@@ -40,20 +41,27 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
             do {
                 task = toDo.take();
                 if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
-                    if (task.isToBeCancelled()) {
-                        log.debug("{} {} has been already cancelled, we won't process it, " +
-                                "stills has {} tasks in todo list", task.getClass().getSimpleName(),
-                                task.getKey(), toDo.size());
-                    } else {
+                    try {
                         log.debug("{} {} starts at {}, stills has {} tasks in todo list", task.getClass().getSimpleName(),
                                 task.getKey(), ZonedDateTime.now(), toDo.size());
                         processing.put(task.getKey(), (T) task);
                         toDo.moveToProcessing(task.getKey());
-                        task.process();
+                        if (task.isToBeCancelled()) {
+                            log.debug("{} {} has already been cancelled, we won't process it, stills has {} tasks in processing",
+                                    task.getClass().getSimpleName(), task.getKey(), processing.size());
+                            task.getFuture().completeExceptionally(new ToDoTaskCancelled(task.getKey()));
+                        } else {
+                            task.process();
+                            log.debug("{} {} finishes at {}, stills has {} tasks in processing",
+                                    task.getClass().getSimpleName(), task.getKey(), ZonedDateTime.now(), processing.size());
+                        }
                         processing.remove(task.getKey());
                         counter++;
-                        log.debug("{} {} finishes at {}, stills has {} tasks in processing",
-                                task.getClass().getSimpleName(), task.getKey(), ZonedDateTime.now(), processing.size());
+                    } catch (Exception e) {
+                        if(e instanceof InterruptedException) {
+                            throw e;
+                        }
+                        log.error(e.getMessage(), e);
                     }
                 }
             } while (task != null && !(task instanceof FinishTask));
