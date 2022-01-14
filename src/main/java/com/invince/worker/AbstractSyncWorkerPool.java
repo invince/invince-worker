@@ -1,6 +1,7 @@
 package com.invince.worker;
 
 import com.invince.exception.TaskCancelled;
+import com.invince.exception.WorkerWarning;
 import com.invince.spring.ContextHolder;
 import com.invince.util.SafeRunner;
 import com.invince.worker.collections.ITaskGroups;
@@ -73,6 +74,8 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
                             task.getFuture().join();
                         } catch (TaskCancelled e) {
                             log.warn("Task {} cancelled, result will be null", e.getKey());
+                        } catch (WorkerWarning e) {
+                            log.warn(e.getMessage(), e);
                         }
                         completableTaskService.release(task);
                     });

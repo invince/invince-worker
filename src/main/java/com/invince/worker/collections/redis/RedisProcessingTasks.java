@@ -3,6 +3,7 @@ package com.invince.worker.collections.redis;
 import com.invince.util.SafeRunner;
 import com.invince.worker.BaseTask;
 import com.invince.worker.collections.IProcessingTasks;
+import com.invince.worker.collections.local.DefaultProcessingTasks;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RMap;
 import org.redisson.api.RTopic;
@@ -20,6 +21,8 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     private final String prefix;
     private final String poolUid;
 
+    private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
+
 
     public RedisProcessingTasks(RedissonClient redisson, String prefix, String poolUid) {
         this.redisson = redisson;
@@ -31,8 +34,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
             RMap<K, TaskInProcessingWrapper<V>> map = getRedisMap();
             var wrapper = map.get(keyToCancel);
             if (wrapper != null && poolUid.equals(wrapper.getPoolProcessIt())) {
-                log.info("Task {} is processing on this node, we'll cancel it", keyToCancel);
-                SafeRunner.run(() -> wrapper.getTask().cancelProcessing());
+                cancelInLocal(keyToCancel);
             }
         });
     }
@@ -40,6 +42,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public V put(K key, V value) {
         getRedisMap().put(key, new TaskInProcessingWrapper<>(value, poolUid));
+        tasksProcessingOnThisInstance.put(key, value);
         log.debug("Task {} move to redis processing map", value.getKey());
         return value;
     }
@@ -47,6 +50,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public V remove(Object key) {
         var wrapper = getRedisMap().remove(key);
+        tasksProcessingOnThisInstance.remove(key);
         log.debug("Task {} removed from redis processing map", key);
         return wrapper.getTask();
     }
@@ -57,13 +61,12 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     }
 
     @Override
-    public void cancel(K key) {
+    public void cancel(String key) {
         if (!StringUtils.isEmpty(key)) {
             RMap<K, TaskInProcessingWrapper<V>> map = getRedisMap();
             var wrapper = map.get(key);
             if (wrapper != null && poolUid.equals(wrapper.getPoolProcessIt())) {
-                log.info("Task {} is processing on this node, we'll cancel it", key);
-                SafeRunner.run(() -> wrapper.getTask().cancelProcessing());
+                cancelInLocal(key);
             } else {
                 log.info("Task {} is not processing on this node, we'll broadcast the cancel event to others", key);
                 RTopic cancelProcessingTopic = redisson.getTopic(prefix + CANCEL_PROCESSING_TOPIC);
@@ -75,6 +78,16 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public int size() {
         return getRedisMap().size();
+    }
+
+    private void cancelInLocal(String keyToCancel) {
+        V task = tasksProcessingOnThisInstance.get(keyToCancel);
+        if(task != null) {
+            log.info("Task {} is processing on this node, we'll cancel it", keyToCancel);
+            SafeRunner.run(() -> task.cancelProcessing());
+        } else {
+            log.warn("Task P{ not found in local processing copy", keyToCancel);
+        }
     }
 
     private RMap<K, TaskInProcessingWrapper<V>> getRedisMap() {

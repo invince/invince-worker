@@ -1,6 +1,7 @@
 package com.invince.worker;
 
 import com.invince.exception.TaskCancelled;
+import com.invince.exception.WorkerWarning;
 import com.invince.spring.ContextHolder;
 import com.invince.worker.future.ICompletableTaskService;
 import com.invince.worker.future.local.DefaultCompletableTaskService;
@@ -35,6 +36,8 @@ public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<S
                                     result = task.getFuture().join();
                                 } catch (TaskCancelled e) {
                                     log.warn("Task {} cancelled, result will be null", e.getKey());
+                                } catch (WorkerWarning e) {
+                                    log.warn(e.getMessage(), e);
                                 }
                                 completableTaskService.release(task);
                                 return result;

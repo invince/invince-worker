@@ -16,7 +16,7 @@ public class DefaultProcessingTasks<K, V extends BaseTask> extends ConcurrentHas
     }
 
     @Override
-    public void cancel(K key) {
+    public void cancel(String key) {
         if (!StringUtils.isEmpty(key)) {
             var task = get(key);
             if (task != null) {

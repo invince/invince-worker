@@ -34,7 +34,7 @@ public abstract class BaseTask<T> implements Serializable {
     @Setter
     private boolean useCustomCompletableTaskService = false; // for ex, you can use redis version, but be careful, that will creates a lot of connection (almost one per task) to redis
 
-    protected transient AtomicBoolean toContinue ;
+    protected AtomicBoolean toContinue = new AtomicBoolean(true) ;
 
     abstract void processInternal();
     protected void onEnqueue() {}
@@ -112,29 +112,15 @@ public abstract class BaseTask<T> implements Serializable {
     }
 
     public synchronized final void cancelProcessing() {
-        if(toContinue == null) {
-            initToContinue();
-        }
         toContinue.set(false);
     }
 
     // you can use this to break your process inside processInternal
     protected void checkPoint() {
-        if(!toContinue()) {
+        if(!toContinue.get()) {
             throw new InProgressingTaskCancelled(getKey());
         }
     }
 
-    private boolean toContinue() {
-        if(toContinue == null) {
-            initToContinue();
-        }
-        return toContinue.get();
-    }
 
-    private synchronized void initToContinue() {
-        if(toContinue == null) {
-            toContinue = new AtomicBoolean(true);
-        }
-    }
 }

@@ -12,7 +12,7 @@ public interface IProcessingTasks<K, V extends BaseTask> {
 
     int size();
 
-    void cancel(K key);
+    void cancel(String key);
 
     default void close() {}
 }
