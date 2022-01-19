@@ -1,7 +1,7 @@
 package com.invince.util;
 
-import com.invince.worker.BaseTask;
-import com.invince.worker.IWorkerPool;
+import com.invince.worker.core.BaseTask;
+import com.invince.worker.core.IWorkerPool;
 import lombok.Getter;
 
 import java.util.function.Predicate;
