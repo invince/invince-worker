@@ -1,5 +1,3 @@
-package example;
-
 import com.invince.worker.core.AbstractChainedTaskWithResult;
 import com.invince.worker.core.ChainedSyncWithResultWorkerPool;
 import com.invince.worker.core.WorkerPoolSetup;
@@ -8,8 +6,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ChainedSyncWithResultWorkerPoolExample {
 

@@ -4,8 +4,6 @@ import com.invince.worker.adapter.local.future.DefaultCompletableTaskFutureServi
 import com.invince.worker.core.future.CompletableTaskFuture;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.CompletableFuture;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class BaskTaskTest {

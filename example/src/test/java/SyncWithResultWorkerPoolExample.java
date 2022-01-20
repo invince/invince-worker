@@ -1,9 +1,8 @@
-package example;
-
 import com.invince.worker.core.AbstractStandardTaskWithResult;
 import com.invince.worker.core.SyncWithResultWorkerPool;
 import com.invince.worker.core.WorkerPoolSetup;
 import com.invince.worker.core.future.CompletableTaskFuture;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -24,8 +23,8 @@ class SyncWithResultWorkerPoolExample {
         pool.enqueueAll("abc", List.of(new NothingTask(1), new NothingTask(2), new NothingTask(3)));
         pool.enqueueAll("def", List.of(new NothingTask(8), new NothingTask(2), new NothingTask(3)));
 
-        assertEquals(6, pool.waitResultUntilFinish("abc"));
-        assertEquals(13, pool.waitResultUntilFinish("def"));
+        Assertions.assertEquals(6, pool.waitResultUntilFinish("abc"));
+        Assertions.assertEquals(13, pool.waitResultUntilFinish("def"));
 
         pool.shutdown(false);
     }

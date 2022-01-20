@@ -1,9 +1,7 @@
 package com.invince.worker.core;
 
 import com.invince.exception.TaskCancelled;
-import com.invince.worker.adapter.local.future.DefaultCompletableTaskFutureService;
 import com.invince.worker.core.future.CompletableTaskFuture;
-import com.invince.worker.core.future.ICompletableTaskFutureService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
