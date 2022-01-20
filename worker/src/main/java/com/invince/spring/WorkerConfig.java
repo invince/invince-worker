@@ -11,7 +11,7 @@ import org.springframework.context.event.EventListener;
 })
 public class WorkerConfig {
 
-    public static final String PROFILE_REDIS = "redis";
+    public static final String PROFILE_REDIS = "redis-workerpool";
 
     @EventListener({ContextRefreshedEvent.class})
     public void on(ContextRefreshedEvent refreshedEvent) {
