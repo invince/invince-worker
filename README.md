@@ -32,7 +32,7 @@ Why do this?
 - you can also cancel all the tasks in the groups
 
 ### SyncWithResultWorkerPool
-- in additional of above, you can get the result of all the task in the group **waitResultUntilFinish** cf example: com.invince.SyncWithResultWorkerPoolExample
+- in additional of above, you can get the result of all the task in the group **waitResultUntilFinish** cf example: com.invince.worker.demo.SyncWithResultWorkerPoolExample
   * NOTE: you need return a SingleResult for a single task
   * and provide a function to merge list of SingleResult into the GatheredResult, that will be the result of your task group
 

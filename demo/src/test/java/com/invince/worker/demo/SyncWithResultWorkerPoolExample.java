@@ -1,4 +1,4 @@
-package com.invince;
+package com.invince.worker.demo;
 
 import com.invince.worker.core.AbstractStandardTaskWithResult;
 import com.invince.worker.core.SyncWithResultWorkerPool;
