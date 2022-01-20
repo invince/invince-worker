@@ -1,6 +1,9 @@
 package com.invince.worker.core;
 
-public interface ITaskContext {
+/**
+ * Task Identify
+ */
+public interface ITaskIdentify {
     String getPrefix();
 
     String getKey();

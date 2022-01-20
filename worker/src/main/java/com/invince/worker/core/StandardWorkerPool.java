@@ -1,10 +1,11 @@
 package com.invince.worker.core;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.invince.exception.WorkerError;
 import com.invince.util.SafeRunner;
 import com.invince.worker.core.collections.IProcessingTasks;
 import com.invince.worker.core.collections.IToDoTasks;
-import com.invince.worker.core.collections.IWorkerPoolHelper;
+import com.invince.worker.core.helper.IWorkerPoolHelper;
 import com.invince.worker.core.future.ICompletableTaskFutureService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,8 +19,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Do not forget to call shutdown when workerpool ends
- * @param <T>
+ * Blocking queue style workerPool
+ * NOTE: Do not forget to call shutdown when workerpool ends
+ * @param <T> task type
  */
 @Slf4j
 public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
@@ -50,13 +52,14 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         } else if (config.getMaxNbWorker() > 0){
             this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(config.getMaxNbWorker(), namedThreadFactory);
         } else {
-            this.executor =  null;
+            throw new WorkerError("Invalid worker pool setup");
         }
+        beforeInit();
         init();
+        afterInit();
     }
 
     private void init() {
-        beforeInit();
         IWorkerPoolHelper ioc = config.getHelper();
         this.toDo = ioc.newToDoTasks(config.getName());
         this.processingTasks = ioc.newProcessingTasks(config.getName(), poolUid);
@@ -66,24 +69,43 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
                  newWorker();
             }
         }
-        afterInit();
     }
 
+    /**
+     *
+     * @return todo list size, used in monitor service
+     */
     @Override
     public int getToDoListSize() {
         return toDo != null ? toDo.size() : 0;
     }
 
+    /**
+     *
+     * @return processing list size, used in monitor service
+     */
     @Override
     public int getProcessingListSize() {
         return processingTasks != null ? processingTasks.size() : 0;
     }
 
+    /**
+     *
+     * @return nb of permanent worker started, used in monitor service
+     */
     @Override
     public int getPermanentWorkerSize() {
         return permanentWorkers.size();
     }
 
+    /**
+     * Enqueue a task in the workpool
+     * - in unlimited mode, each time we create a new OneshotWorker
+     * - in lazyCreation (with a maxNbWorker) mode (default one), if nb of worker doesn't reach the maxNbWorker, we'll create a new worker
+     * - in not lazyCreation mode, all workers should be created in constructor
+     * @param task task
+     * @return the task
+     */
     @Override
     public T enqueue(T task){
         if(task == null) {
@@ -108,22 +130,40 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         return task;
     }
 
-
+    /**
+     *
+     * @param key task key
+     * @return if task exists in todo list
+     */
     @Override
     public boolean existToDoTask(String key) {
         return toDo != null && toDo.exist(key);
     }
 
+    /**
+     *
+     * @param key task key
+     * @return if task exists in processing list
+     */
     @Override
     public boolean existProcessingTask(String key) {
         return processingTasks != null && processingTasks.exist(key);
     }
 
+    /**
+     * remove the task via
+     * @param key task key
+     * @return the removed task
+     */
     @Override
     public T removeTask(String key){
         return processingTasks.remove(key);
     }
 
+    /**
+     * cancel a task (no matter it's in todo list or processing list)
+     * @param key task list
+     */
     @Override
     public void cancelTask(String key) {
         boolean cancelled = false;
@@ -158,6 +198,13 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         tempWorkerLaunched.incrementAndGet();
     }
 
+    /**
+     * shutdown the workpool.
+     * - we will add enough FinishTask into todo list to ends all worker
+     * - close the todo and processing (you can implement necessary thing for your custom type of todo/processing list)
+     * - shutdown the main executor
+     * @param await if we wait current process finish
+     */
     @Override
     public void shutdown(boolean await) {
         if(config.isUnlimited()) {
@@ -184,9 +231,15 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         log.info("[StandardWorkerPool]: All task has been processed.");
     }
 
+    /**
+     * called before init() in constructor
+     */
     protected void beforeInit() {
     }
 
+    /**
+     * called after init() in constructor
+     */
     protected void afterInit() {
     }
 }

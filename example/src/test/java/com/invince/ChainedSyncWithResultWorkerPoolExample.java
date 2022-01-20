@@ -1,3 +1,5 @@
+package com.invince;
+
 import com.invince.worker.core.AbstractChainedTaskWithResult;
 import com.invince.worker.core.ChainedSyncWithResultWorkerPool;
 import com.invince.worker.core.WorkerPoolSetup;

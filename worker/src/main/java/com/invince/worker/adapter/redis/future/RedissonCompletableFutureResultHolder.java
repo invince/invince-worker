@@ -2,7 +2,7 @@ package com.invince.worker.adapter.redis.future;
 
 import com.invince.exception.WorkerError;
 import com.invince.exception.WorkerRemoteError;
-import com.invince.worker.core.ITaskContext;
+import com.invince.worker.core.ITaskIdentify;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,13 +10,16 @@ import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 
+/**
+ * To simplify the distribute join, the holder contains either result or exception
+ * @param <T> result type
+ */
 @Accessors(chain = true)
 @Setter
 @NoArgsConstructor
-// to simplify the join, the holder contains either result or exception
-public class RedissonCompletableFutureResultHolder<T> implements ITaskContext, Serializable {
+public class RedissonCompletableFutureResultHolder<T> implements ITaskIdentify, Serializable {
 
-    public RedissonCompletableFutureResultHolder(ITaskContext context) {
+    public RedissonCompletableFutureResultHolder(ITaskIdentify context) {
         WorkerError.verify("Null context to copy")
                 .nonNull(context)
                 .notEmpty(context.getKey())

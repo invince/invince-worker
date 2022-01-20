@@ -11,6 +11,12 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
 
+/**
+ * RedisProcessingTasks is a RMap of taskKey -> ProcessingTaskWrapper
+ *
+ * @param <K> task key (we can use only task key, not the task uniqueKey, because each workerPool shall have its own IProcessingTasks)
+ * @param <V> task type
+ */
 @Slf4j
 public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingTasks<K, V> {
 
@@ -31,6 +37,9 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         this.poolUid = poolUid;
 
         RTopic cancelProcessingTopic = redisson.getTopic(prefix + CANCEL_PROCESSING_TOPIC);
+        // every node should listen to cancelProcessing topic.
+        // means we can do task.cancel on one node, then redis publish that event and every node
+        // check if the task is processing on itself, if yes, cancel it
         cancelProcessingTopic.addListener(String.class, (channel, keyToCancel) -> {
             if(keyToCancel == null) {
                 log.warn("Null key to cancel");
@@ -44,14 +53,30 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         });
     }
 
+    /**
+     * Put a task into processingTasks.
+     * We will put the task both on redis and tasksProcessingOnThisInstance
+     *
+     * @param key task key
+     * @param task task
+     * @return the added task
+     */
     @Override
-    public V put(K key, V value) {
-        getRedisMap().put(key, new ProcessingTaskWrapper<>(value, poolUid));
-        tasksProcessingOnThisInstance.put(key, value);
-        log.debug("Task {} move to redis processing map", value.getKey());
-        return value;
+    public V put(K key, V task) {
+        getRedisMap().put(key, new ProcessingTaskWrapper<>(task, poolUid));
+        tasksProcessingOnThisInstance.put(key, task);
+        log.debug("Task {} move to redis processing map", task.getKey());
+        return task;
     }
 
+
+    /**
+     * Remove a task from processingTasks.
+     * We will remove the task both on redis and tasksProcessingOnThisInstance
+     *
+     * @param key task key
+     * @return the removed task
+     */
     @Override
     public V remove(Object key) {
         var wrapper = getRedisMap().remove(key);
@@ -60,11 +85,21 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         return wrapper.getTask();
     }
 
+    /**
+     * Check if task key exist in processing list
+     * @param key task key
+     * @return if task key exist in processing list
+     */
     @Override
     public boolean exist(K key) {
         return getRedisMap().containsKey(key);
     }
 
+    /**
+     * Cancel a task via task key.
+     * If task is processing on same node, cancel it, otherwise broadcast event in cancelProcessingTopic
+     * @param key task key
+     */
     @Override
     public void cancel(String key) {
         if (!StringUtils.isEmpty(key)) {
@@ -80,6 +115,9 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         }
     }
 
+    /**
+     * @return size of the processing tasks
+     */
     @Override
     public int size() {
         return getRedisMap().size();

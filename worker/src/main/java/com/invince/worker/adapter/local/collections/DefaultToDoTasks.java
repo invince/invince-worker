@@ -16,25 +16,37 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Slf4j
 public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements IToDoTasks {
 
-    private Set<String> toDoKeyCopy = ConcurrentHashMap.newKeySet(); // because there is a gap between we take from toDo list and put it into processing. during the gap task is neither in todo nor in processing
-    private Set<String> keysToCancel = ConcurrentHashMap.newKeySet();
+    // because when you take the task from toDo queue, before you put it into processing list,
+    // this task is neither in todo nor in processing list, we need keep it somewhere before we put it into processing list
+    private final Set<String> toDoKeyCopy = ConcurrentHashMap.newKeySet();
+    private final Set<String> keysToCancel = ConcurrentHashMap.newKeySet();
 
 
+    /**
+     * Check if task key exist in todo list
+     * @param key task key
+     * @return if task key exist in todo list
+     */
     @Override
     public boolean exist(String key) {
         return key != null && toDoKeyCopy.contains(key);
     }
 
-    @Override
-    public void subscribe(Runnable onFinishCallBack) {
-        log.info("One Worker subscribed");
-    }
 
+    /**
+     * Task is moved to processing list, so we need remove the key from toDo list
+     * @param key task key
+     * @return if remove is successful
+     */
     @Override
     public boolean movedToProcessing(String key) {
         return toDoKeyCopy.remove(key);
     }
 
+    /**
+     * Cancel a task in toDo list
+     * @param key task key
+     */
     @Override
     public void cancel(String key) {
         if (!StringUtils.isEmpty(key)) {
@@ -42,6 +54,11 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
         }
     }
 
+    /**
+     * Task a task, if it's in the keysToCancel list, we'll call cancelToDo, and later in worker, we won't process it, just throw ToDoTaskCancelled exception
+     * @return the task
+     * @throws InterruptedException
+     */
     @Override
     public BaseTask take() throws InterruptedException {
         var task = super.take();
@@ -52,6 +69,11 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
         return task;
     }
 
+    /**
+     * Add new task in toDo list
+     * @param baseTask the task
+     * @return successful or not
+     */
     @Override
     public boolean add(BaseTask baseTask) {
         boolean rt = super.add(baseTask);

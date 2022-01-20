@@ -16,11 +16,20 @@ public class DefaultProcessingTasks<K, V extends BaseTask> extends ConcurrentHas
         implements IProcessingTasks<K, V> {
 
 
+    /**
+     * Check if task key exist in processing list
+     * @param key task key
+     * @return if task key exist in processing list
+     */
     @Override
     public boolean exist(K key) {
         return key != null && containsKey(key);
     }
 
+    /**
+     * Cancel a task via task key
+     * @param key task key
+     */
     @Override
     public void cancel(String key) {
         if (!StringUtils.isEmpty(key)) {

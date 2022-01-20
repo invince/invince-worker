@@ -3,7 +3,7 @@ package com.invince.worker.adapter.redis.future;
 import com.invince.exception.WorkerError;
 import com.invince.exception.WorkerRemoteError;
 import com.invince.util.EnhancedJsonJacksonCodec;
-import com.invince.worker.core.ITaskContext;
+import com.invince.worker.core.ITaskIdentify;
 import com.invince.worker.core.future.CompletableTaskFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
@@ -17,7 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.invince.spring.WorkerConfig.PROFILE_REDIS;
 
-
+/**
+ * Helper to simulate join, complete, completeExceptionally... in redis mode
+ */
 @Slf4j
 @Primary
 @Profile(PROFILE_REDIS)
@@ -27,6 +29,7 @@ public class RedissonCompletableTaskFutureHelper {
 
     private final RedissonClient redisson;
 
+    // We will keep a map of task -> CompletableTaskFuture, if one CompletableTaskFuture does join/wait (means it's waiting for the result), we put it into this map
     private final Map<String, CompletableTaskFuture> waitedTask = new ConcurrentHashMap<>();
     private final Map<String, RedissonCompletableFutureResultHolder> notWaitedTask = new ConcurrentHashMap<>();
 
@@ -36,6 +39,16 @@ public class RedissonCompletableTaskFutureHelper {
         this.redisson = redisson;
         // we use JsonJacksonCodec instead of jboss MarshallingCodec (the default one),
         // sometimes the Marshalling one has pb on classloader, the json one is more flexible
+        listenToFinishTopic();
+
+    }
+
+    /**
+     * We will listen to the finishTopic, once receive something:
+     * - we check if it's waited by this node, if yes, we find the CompletableTaskFuture from waitedTask (cf comments on waitedTask and join) and call complete/completeExceptionally
+     * - if it's not waited by this node, we keep the result in notWaitedTask, maybe later we will do join/wait on it
+     */
+    private void listenToFinishTopic() {
         RTopic finishTopic = getFinishTopic();
         finishTopic.addListener(RedissonCompletableFutureResultHolder.class, (channel, resultHolder) -> {
             String uniqueKeyFinished = resultHolder.getUniqueKey();
@@ -58,7 +71,15 @@ public class RedissonCompletableTaskFutureHelper {
         });
     }
 
-    public <T> T join(ITaskContext context) {
+    /**
+     * we'll create a unique CompletableTaskFuture for each context, if you do join, we put it into waitedTask
+     * and wait the redis finishTopic receive the finishEvent of that task
+     *
+     * @param context task context
+     * @param <T> result type
+     * @return result
+     */
+    public <T> T join(ITaskIdentify context) {
         WorkerError.verify("Null context to copy")
                 .nonNull(context)
                 .notEmpty(context.getKey())
@@ -81,7 +102,13 @@ public class RedissonCompletableTaskFutureHelper {
         }
     }
 
-    public boolean completeExceptionally(ITaskContext context, Throwable ex) {
+    /**
+     * If the task is completeExceptionally on the working node, we shall publish that finishEvent with exception in finishTopic
+     * @param context task context
+     * @param ex the exception
+     * @return successful or not
+     */
+    public boolean completeExceptionally(ITaskIdentify context, Throwable ex) {
         WorkerError.verify("Null context to copy")
                 .nonNull(context, ex)
                 .notEmpty(context.getKey())
@@ -93,7 +120,13 @@ public class RedissonCompletableTaskFutureHelper {
         return true;
     }
 
-    public <T> boolean complete(ITaskContext context, T value) {
+    /**
+     * If the task is complete with a result on the working node, we shall publish that finishEvent with result in finishTopic
+     * @param context task context
+     * @param value the result
+     * @return successful or not
+     */
+    public <T> boolean complete(ITaskIdentify context, T value) {
         WorkerError.verify("Null context to copy")
                 .nonNull(context)
                 .notEmpty(context.getKey())

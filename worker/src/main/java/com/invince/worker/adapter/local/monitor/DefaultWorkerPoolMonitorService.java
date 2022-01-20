@@ -38,6 +38,11 @@ public class DefaultWorkerPoolMonitorService implements IWorkerPoolMonitorServic
         }
     }
 
+    /**
+     * Get status of all workerPool in same group
+     * @param groupName group name, cf IWorkerPool.getGroupName
+     * @return status of all workerPool in same group
+     */
     @Override
     public WorkerPoolGroupStatus get(String groupName) {
         return new WorkerPoolGroupStatus(db.get(groupName));

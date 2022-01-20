@@ -13,6 +13,13 @@ import java.util.stream.Collectors;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 
+/**
+ * in additional of CompositeWorkerPool, you can waitUntilFinish
+ *
+ * @param <T>            task type
+ * @param <GroupByType>  group key type
+ * @param <SingleResult> singleResult of single task
+ */
 @Slf4j
 public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, SingleResult>
         implements ISyncWorkerPool<T, GroupByType, SingleResult> {
@@ -27,6 +34,9 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         this.defaultPool = defaultPool;
     }
 
+    /**
+     * @return todo list size, used in monitor service
+     */
     @Override
     public int getToDoListSize() {
         int total = defaultPool.getToDoListSize();
@@ -37,6 +47,9 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return total;
     }
 
+    /**
+     * @return processing list size, used in monitor service
+     */
     @Override
     public int getProcessingListSize() {
         int total = defaultPool.getProcessingListSize();
@@ -47,6 +60,9 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return total;
     }
 
+    /**
+     * @return nb of permanent worker started, used in monitor service
+     */
     @Override
     public int getPermanentWorkerSize() {
         int total = defaultPool.getPermanentWorkerSize();
@@ -57,6 +73,13 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return total;
     }
 
+    /**
+     * Enqueue a task in the workpool
+     * - when you enqueue a task, we'll check workerPoolPredicate one by one, if predicate matches, the task will be redirected to that pool
+     *
+     * @param task task
+     * @return the task
+     */
     @Override
     public T enqueue(T task) {
         if (!isEmpty(pools)) {
@@ -72,6 +95,10 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return defaultPool.enqueue(task);
     }
 
+    /**
+     * @param key task key
+     * @return if task exists in todo list
+     */
     @Override
     public boolean existToDoTask(String key) {
         if (!isEmpty(pools)) {
@@ -82,6 +109,10 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return defaultPool.existToDoTask(key);
     }
 
+    /**
+     * @param key task key
+     * @return if task exists in processing list
+     */
     @Override
     public boolean existProcessingTask(String key) {
         if (!isEmpty(pools)) {
@@ -92,6 +123,12 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return defaultPool.existProcessingTask(key);
     }
 
+    /**
+     * remove the task via
+     *
+     * @param key task key
+     * @return the removed task
+     */
     @Override
     public T removeTask(String key) {
         AtomicReference<T> result = new AtomicReference<>();
@@ -111,6 +148,11 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         return result.get();
     }
 
+    /**
+     * shutdown the all the workpool
+     *
+     * @param await if we wait current process finish
+     */
     @Override
     public void shutdown(boolean await) {
         if (!isEmpty(pools)) {
@@ -119,6 +161,12 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         defaultPool.shutdown(await);
     }
 
+    /**
+     * cancel a task (no matter it's in todo list or processing list)
+     * - we'll match first which pool process it, then call pool.cancelTask
+     *
+     * @param key task list
+     */
     @Override
     public void cancelTask(String key) {
         if (!isEmpty(pools)) {
@@ -136,6 +184,12 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         }
     }
 
+    /**
+     * Enqueue tasks in a group, you can call this separately, all task in same group counts
+     * - for each task we'll match the pool to process it
+     * @param groupName groupName
+     * @param tasks tasks
+     */
     @Override
     public void enqueueAll(GroupByType groupName, Collection<T> tasks) {
         if (isEmpty(tasks)) {
@@ -154,6 +208,11 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         }
     }
 
+    /**
+     * wait all task in same group finishes
+     * - for each task we'll match the pool, then waitUntilFinish
+     * @param groupName groupName
+     */
     @Override
     public void waitUntilFinish(GroupByType groupName) {
         if (!isEmpty(pools)) {
@@ -162,6 +221,10 @@ public class CompositeSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByTy
         defaultPool.waitUntilFinish(groupName);
     }
 
+    /**
+     * cancel all tasks in same group
+     * @param groupName groupName
+     */
     @Override
     public void cancelGroup(GroupByType groupName) {
         if (!isEmpty(pools)) {

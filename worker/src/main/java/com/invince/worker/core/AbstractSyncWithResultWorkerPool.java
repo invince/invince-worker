@@ -9,17 +9,33 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Wait all task finishes in that group and gather all SingleResult to a GatheredResult
+ * @param <T> task type
+ * @param <GroupByType> group key type
+ * @param <SingleResult> SingleResult of a single task
+ * @param <GatheredResult> GatheredResult is the final result when we merge all task SingleResult of a group together
+ */
 @Slf4j
 public class AbstractSyncWithResultWorkerPool<T extends AbstractTaskWithResult<SingleResult>, GroupByType, SingleResult, GatheredResult>
         extends AbstractSyncWorkerPool<T, GroupByType, SingleResult> {
 
     private final Function<List<SingleResult>, GatheredResult> gatherFn;
 
+    /**
+     * @param config   workerPoolSetup
+     * @param gatherFn how to merge all SingleResult into GatheredResult
+     */
     public AbstractSyncWithResultWorkerPool(WorkerPoolSetup config, Function<List<SingleResult>, GatheredResult> gatherFn) {
         super(config);
         this.gatherFn = gatherFn;
     }
 
+    /**
+     * Wait all task finishes in that group and gather all SingleResult to a GatheredResult
+     * @param group the group of your tasks, so you can wait all task of that group finishes
+     * @return GatheredResult calculated from SingleResult of all tasks in the same group
+     */
     // NOTE: you can only wait one time, since we remove the group once you have the result
     GatheredResult waitResultUntilFinishInternal(GroupByType group) {
         GatheredResult rt = null;

@@ -10,6 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Standard worker, keep processing the task taken from todo list until receiving FinishTask
+ * @param <T> task type
+ */
 @Slf4j
 public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> implements Runnable {
 
@@ -30,15 +34,12 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                 .nonNull(toDo, processing);
         this.toDo = toDo;
         this.processing = processing;
-        this.toDo.subscribe(() -> {
-            if (!isDone() && !isCompletedExceptionally() && !isCancelled()) {
-                log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
-                this.complete(null);
-            }
-        });
     }
 
 
+    /**
+     * keep processing the task taken from todo list until receiving FinishTask
+     */
     @Override
     public void run() {
         try {
@@ -63,9 +64,6 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                         processing.remove(task.getKey());
                         counter++;
                     } catch (Exception e) {
-                        if (e instanceof InterruptedException) {
-                            throw e;
-                        }
                         log.error(e.getMessage(), e);
                     }
                 }

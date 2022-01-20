@@ -11,27 +11,41 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * DefaultTaskGroups is a Map of group -> list of taskFuture (on CompletableTaskFuture you can find the task key, task prefix)
  *
- * @param <GroupBy> group
+ * @param <GroupByType> groupKey type
  * @param <SingleResult> result type for a single task
  */
-public class DefaultTaskGroups<GroupBy, SingleResult> implements ITaskGroups<GroupBy, SingleResult> {
+public class DefaultTaskGroups<GroupByType, SingleResult> implements ITaskGroups<GroupByType, SingleResult> {
 
-    protected final Map<GroupBy, ConcurrentLinkedQueue<CompletableTaskFuture<SingleResult>>>
+    protected final Map<GroupByType, ConcurrentLinkedQueue<CompletableTaskFuture<SingleResult>>>
             requestTaskMap = new ConcurrentHashMap<>();
 
+    /**
+     * Get or Create the group
+     * @param groupKey group key
+     * @return the queue of taskFuture of that group
+     */
     @Override
-    public Queue<CompletableTaskFuture<SingleResult>> getOrCreate(GroupBy groupBy) {
-        requestTaskMap.putIfAbsent(groupBy, new ConcurrentLinkedQueue<>());
-        return requestTaskMap.get(groupBy);
+    public Queue<CompletableTaskFuture<SingleResult>> getOrCreate(GroupByType groupKey) {
+        requestTaskMap.putIfAbsent(groupKey, new ConcurrentLinkedQueue<>());
+        return requestTaskMap.get(groupKey);
     }
 
+    /**
+     * Check if group exist and if we have already taskFuture in it
+     * @param groupKey group key
+     * @return if group exist and if we have already taskFuture in it
+     */
     @Override
-    public boolean existNotEmptyGroup(GroupBy groupBy) {
-        return requestTaskMap.containsKey(groupBy) && !requestTaskMap.get(groupBy).isEmpty();
+    public boolean existNotEmptyGroup(GroupByType groupKey) {
+        return requestTaskMap.containsKey(groupKey) && !requestTaskMap.get(groupKey).isEmpty();
     }
 
+    /**
+     * remove the group
+     * @param groupKey group key
+     */
     @Override
-    public void remove(GroupBy groupBy) {
-        requestTaskMap.remove(groupBy);
+    public void remove(GroupByType groupKey) {
+        requestTaskMap.remove(groupKey);
     }
 }
