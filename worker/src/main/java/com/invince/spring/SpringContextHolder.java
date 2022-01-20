@@ -8,8 +8,11 @@ import org.springframework.context.ApplicationContext;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 
+/**
+ * SpringContextHolder
+ */
 @Slf4j
-public class ContextHolder {
+public class SpringContextHolder {
 
     private static ApplicationContext context;
 
@@ -24,12 +27,12 @@ public class ContextHolder {
         }
     }
 
-    private ContextHolder() {
+    private SpringContextHolder() {
     }
 
     public static synchronized void init(ApplicationContext context) {
-        if (ContextHolder.context == null) {
-            ContextHolder.context = context;
+        if (SpringContextHolder.context == null) {
+            SpringContextHolder.context = context;
             murex.release();
         } else {
             log.warn("Context is already initialized");

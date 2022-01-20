@@ -15,6 +15,6 @@ public class WorkerConfig {
 
     @EventListener({ContextRefreshedEvent.class})
     public void on(ContextRefreshedEvent refreshedEvent) {
-        ContextHolder.init(refreshedEvent.getApplicationContext());
+        SpringContextHolder.init(refreshedEvent.getApplicationContext());
     }
 }

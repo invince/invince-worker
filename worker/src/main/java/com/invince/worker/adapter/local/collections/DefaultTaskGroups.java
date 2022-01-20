@@ -8,6 +8,12 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+/**
+ * DefaultTaskGroups is a Map of group -> list of taskFuture (on CompletableTaskFuture you can find the task key, task prefix)
+ *
+ * @param <GroupBy> group
+ * @param <SingleResult> result type for a single task
+ */
 public class DefaultTaskGroups<GroupBy, SingleResult> implements ITaskGroups<GroupBy, SingleResult> {
 
     protected final Map<GroupBy, ConcurrentLinkedQueue<CompletableTaskFuture<SingleResult>>>

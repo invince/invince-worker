@@ -8,6 +8,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Helper to check error.
+ * You can do things like:
+ *      WorkerError.verify("OK")
+ *        .nonNull(person, "hello")
+ *        .notEmpty(list)
+ */
 @Slf4j
 class WorkerExceptionHelperBuilder {
 

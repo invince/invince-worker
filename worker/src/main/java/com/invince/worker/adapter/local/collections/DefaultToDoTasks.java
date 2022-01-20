@@ -9,6 +9,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * DefaultToDoTasks is a LinkedBlockingQueue of task.
+ * We put BaseTask because we need accept both task type of your workerPool and FinishTask
+ */
 @Slf4j
 public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements IToDoTasks {
 

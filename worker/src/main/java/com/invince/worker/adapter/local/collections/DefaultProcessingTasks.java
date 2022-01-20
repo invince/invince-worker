@@ -6,6 +6,12 @@ import org.springframework.util.StringUtils;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * DefaultProcessingTasks is a ConcurrentHashMap of taskKey -> task
+ *
+ * @param <K> task key (we can use only task key, not the task uniqueKey, because each workerPool shall have its own IProcessingTasks)
+ * @param <V> task type
+ */
 public class DefaultProcessingTasks<K, V extends BaseTask> extends ConcurrentHashMap<K, V>
         implements IProcessingTasks<K, V> {
 

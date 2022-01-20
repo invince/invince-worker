@@ -13,13 +13,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * DefaultWorkerPoolMonitorService to have WorkerPoolStatus
+ * Note: you can group list of workerPool.
+ *       For ex, if you have a complex process using 3 pool, put same group name on these 3 pools
+ *               and when you do IWorkerPoolMonitorService.get(groupName), you got status of all the 3 pools
+ */
 @Service
-public class LocalWorkerPoolMonitorService implements IWorkerPoolMonitorService {
+public class DefaultWorkerPoolMonitorService implements IWorkerPoolMonitorService {
 
     private final Map<String, List<WorkerPoolStatusBuilder>> db = new HashMap<>();
 
     @Autowired
-    public LocalWorkerPoolMonitorService(List<StandardWorkerPool<?>> pools) {
+    public DefaultWorkerPoolMonitorService(List<StandardWorkerPool<?>> pools) {
         if (pools != null) {
             pools.stream()
                     .filter(one -> one != null

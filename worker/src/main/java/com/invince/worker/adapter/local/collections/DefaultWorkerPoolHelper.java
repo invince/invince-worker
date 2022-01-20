@@ -9,6 +9,9 @@ import com.invince.worker.core.collections.IWorkerPoolHelper;
 import com.invince.worker.core.future.ICompletableTaskFutureService;
 import org.springframework.stereotype.Service;
 
+/**
+ * DefaultWorkerPoolHelper used to build your workerPool.
+ */
 @Service
 public class DefaultWorkerPoolHelper implements IWorkerPoolHelper {
 

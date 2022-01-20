@@ -8,6 +8,9 @@ import lombok.experimental.UtilityClass;
 import org.redisson.client.codec.BaseCodec;
 import org.redisson.codec.JsonJacksonCodec;
 
+/**
+ * Default redisson JsonJacksonCodec + JavaTimeModule
+ */
 @UtilityClass
 public class EnhancedJsonJacksonCodec {
 
