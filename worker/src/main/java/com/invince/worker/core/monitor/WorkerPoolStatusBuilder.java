@@ -5,6 +5,9 @@ import com.invince.worker.core.StandardWorkerPool;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * helper to get the latest workerPool status
+ */
 @Data
 @AllArgsConstructor
 public class WorkerPoolStatusBuilder implements Comparable<WorkerPoolStatusBuilder> {

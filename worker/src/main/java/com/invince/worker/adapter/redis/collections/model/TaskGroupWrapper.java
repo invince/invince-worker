@@ -1,20 +1,25 @@
 package com.invince.worker.adapter.redis.collections.model;
 
 import com.invince.exception.WorkerError;
-import com.invince.worker.core.ITaskContext;
+import com.invince.worker.core.ITaskIdentify;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * TaskGroupWrapper is what we put in RedisTaskGroups
+ * we store the prefix (to reduce the uuid collision) and key (default is a uuid) of the task
+ *
+ */
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class TaskGroupWrapper implements ITaskContext {
+public class TaskGroupWrapper implements ITaskIdentify {
 
     private String prefix;
     private String key;
 
-    public TaskGroupWrapper(ITaskContext context) {
+    public TaskGroupWrapper(ITaskIdentify context) {
         WorkerError.verify("Null context to copy")
                 .nonNull(context)
                 .notEmpty(context.getKey())

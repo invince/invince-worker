@@ -9,8 +9,6 @@ import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RList;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,41 +25,55 @@ public class RedisTodoTasks implements IToDoTasks {
 
     private final String prefix;
 
-    // You cannot put FinishTask into redis queue, so the FinishTask is handled only one local,
-    // but meanwhile your blocking should receive both Task From redis + FinishTask from local
-    private final Mono<FinishTask> finish;
-    private MonoSink<FinishTask> finishSink;
-
+    /**
+     * 1. to reduce the usage of redis RBlockingQueue, we create a thread take element from that queue and put into this local BlockingQueue which be used by all workers
+     * 2. we need listen to StandardTask from redis RBlockingQueue + FinishTask handled only in local, that's why we create this combined queue
+      */
     private final LinkedBlockingQueue<BaseTask> blockingQueueLocal = new LinkedBlockingQueue<>();
 
-    private final AtomicBoolean listenerLaunched = new AtomicBoolean(false);
+    private final AtomicBoolean listenRunning = new AtomicBoolean(false);
     private ExecutorService listenerExecutor;
 
     public RedisTodoTasks(RedissonClient redisson, String prefix) {
         this.redisson = redisson;
         this.prefix = prefix;
-        this.finish = Mono.create(sink -> finishSink = sink);
     }
 
+    /**
+     * Start listen to the todo list, if nbWorker = 0, we don't start it
+     */
+    @Override
+    public void startListening() {
+        listenToRBlockingQueue();
+    }
 
+    /**
+     *
+     * @return size of the toDo list, we don't need check finish task, so we check directly redis queue
+     */
     @Override
     public int size() {
         return getRedisBQ().size();
     }
 
+    /**
+     *
+     * @param key task key
+     * @return check if task key exists in toDo list, we don't need check finish task, so we check directly in redis queue
+     */
     @Override
     public boolean exist(String key) {
         return !StringUtils.isEmpty(key) && getRedisBQ().stream().anyMatch(one -> key.equals(one.getKey()));
     }
 
+    /**
+     *
+     * @return take element from blockingQueueLocal
+     * @throws InterruptedException
+     */
     @Override
     public BaseTask take() throws InterruptedException {
-        var task = getRedisBQ().take();
-        if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
-            task.cancelToDo();
-            redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
-        }
-        return task;
+        return blockingQueueLocal.take();
     }
 
     @Override
@@ -74,13 +86,7 @@ public class RedisTodoTasks implements IToDoTasks {
     @Override
     public boolean add(BaseTask task) {
         if (task instanceof FinishTask) {
-            if (finishSink != null) {
-                this.finishSink.success((FinishTask) task);
-                return true;
-            } else {
-                log.debug("Fail to add finishTask, the blocking queue is not initialized correctly");
-                return false;
-            }
+            return blockingQueueLocal.add(task);
         } else {
             boolean rt = getRedisBQ().add(task);
             RList<String> todoKeyCopy = redisson.getList(prefix + TODO_LIST_KEY);
@@ -91,16 +97,10 @@ public class RedisTodoTasks implements IToDoTasks {
         }
     }
 
-    @Override
-    public void subscribe(Runnable finishCallback) {
-        log.info("One worker subscribed");
-        listenToRBlockingQueue();
-        finish.subscribe(finishTask -> SafeRunner.run(finishCallback));
-    }
-
     // reduce usage of redis, otherwise every worker do RBlockingQueue.take
     private void listenToRBlockingQueue() {
-        if (!listenerLaunched.get()) {
+        if(!listenRunning.get()) {
+            listenRunning.set(true);
             listenerExecutor = Executors.newSingleThreadExecutor();
             listenerExecutor.execute(() -> {
                 try {
@@ -108,7 +108,7 @@ public class RedisTodoTasks implements IToDoTasks {
                     do {
                         try {
                             task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
-                            if(task != null) { // normally impossible null
+                            if (task != null) { // normally impossible null
                                 if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
                                     task.cancelToDo();
                                     redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
@@ -121,13 +121,12 @@ public class RedisTodoTasks implements IToDoTasks {
                             }
                             log.error(e.getMessage(), e);
                         }
-                    } while (listenerLaunched.get());
+                    } while (listenRunning.get());
                 } catch (InterruptedException e) {
                     log.error(e.getMessage(), e);
                     Thread.currentThread().interrupt();
                 }
             });
-            listenerLaunched.set(true);
         }
     }
 
@@ -139,7 +138,8 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public void close() {
-        if (listenerLaunched.get() && listenerExecutor != null) {
+        if (listenRunning.get() && listenerExecutor != null) {
+            listenRunning.set(false);
             SafeRunner.run(listenerExecutor::shutdown);
         }
     }

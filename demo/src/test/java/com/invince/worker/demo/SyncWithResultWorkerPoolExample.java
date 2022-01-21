@@ -1,3 +1,5 @@
+package com.invince.worker.demo;
+
 import com.invince.worker.core.AbstractStandardTaskWithResult;
 import com.invince.worker.core.SyncWithResultWorkerPool;
 import com.invince.worker.core.WorkerPoolSetup;
@@ -15,28 +17,28 @@ class SyncWithResultWorkerPoolExample {
 
         Function<List<Integer>, Integer> sumFunction = listNumber -> listNumber.stream().reduce(0, Integer::sum);
 
-        SyncWithResultWorkerPool<NothingTask, String ,Integer, Integer> pool =
+        SyncWithResultWorkerPool<Plus1Task, String ,Integer, Integer> pool =
                 new SyncWithResultWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3), sumFunction);
 
-        pool.enqueueAll("abc", List.of(new NothingTask(1), new NothingTask(2), new NothingTask(3)));
-        pool.enqueueAll("def", List.of(new NothingTask(8), new NothingTask(2), new NothingTask(3)));
+        pool.enqueueAll("abc", List.of(new Plus1Task(1), new Plus1Task(2), new Plus1Task(3)));
+        pool.enqueueAll("def", List.of(new Plus1Task(8), new Plus1Task(2), new Plus1Task(3)));
 
-        Assertions.assertEquals(6, pool.waitResultUntilFinish("abc"));
-        Assertions.assertEquals(13, pool.waitResultUntilFinish("def"));
+        Assertions.assertEquals(((1+1) + (2+1) + (3+1)), pool.waitResultUntilFinish("abc"));
+        Assertions.assertEquals(((8+1) + (2+1) + (3+1)), pool.waitResultUntilFinish("def"));
 
         pool.shutdown(false);
     }
 
-    static class NothingTask extends AbstractStandardTaskWithResult<Integer> {
+    static class Plus1Task extends AbstractStandardTaskWithResult<Integer> {
         int value;
 
-        public NothingTask(int value) {
+        public Plus1Task(int value) {
             this.value = value;
         }
 
         @Override
         protected Integer doProcess(CompletableTaskFuture<Integer> taskFuture) {
-            return value;
+            return value + 1;
         }
     }
 

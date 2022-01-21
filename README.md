@@ -10,7 +10,7 @@ Why do this?
 - you can even distribute your task in a shared queue (we provide redis version, but you can implement your own), so the replica/other app can join and process together
 
 ## How to use it
-- this project is spring based, include **WorkerConfig** configuration.
+- this project is spring based, include **WorkerPoolConfiguration** configuration.
 - first decide which kind of workerPool (cf Different type of workerPool part)
 - Then create the Task class based the parent task type of that workerPool type. for ex: for SyncWithResultWorkerPool, you need create a Task extends AbstractStandardTaskWithResult
   * NOTE: if you want to use distributed mode, your task class should be serializable, for ex: if you use spring, you cannot inject spring bean/service in it
@@ -32,7 +32,7 @@ Why do this?
 - you can also cancel all the tasks in the groups
 
 ### SyncWithResultWorkerPool
-- in additional of above, you can get the result of all the task in the group **waitResultUntilFinish** cf example: SyncWithResultWorkerPoolExample
+- in additional of above, you can get the result of all the task in the group **waitResultUntilFinish** cf example: com.invince.worker.demo.SyncWithResultWorkerPoolExample
   * NOTE: you need return a SingleResult for a single task
   * and provide a function to merge list of SingleResult into the GatheredResult, that will be the result of your task group
 
@@ -53,11 +53,8 @@ Example of usage:
 - when you enqueue a task, we'll check workerPoolPredicate one by one, if predicate matches, the task will be redirected to that pool
 - Example of usage:
   * you can define a workerPool for small task, and a workerPool for heavy task
-  * if task is small, we enqueue it into small queue (for ex: if you're in redis mode, the worker node for small queue can have 10 workers)
-  * if it's heavy one, it goes to heavy queue (for ex: if you're in redis mode, the worker node for heavy queue has only 1 worker)
-
-### CompositeSyncWorkerPool
-- in additional of above, you can **waitUntilFinish**
+  * if task is small, we enqueue it into small queue (for ex: if you're in redis mode, the working node for small queue can have 10 workers)
+  * if it's heavy one, it goes to heavy queue (for ex: if you're in redis mode, the working node for heavy queue has only 1 worker)
 
 ## Different Mode
 
@@ -68,12 +65,12 @@ Example of usage:
 - we provide redis mode (using [redisson](https://github.com/redisson/redisson)) to share the todo blocking queue
 - active **redis-workerpool** spring profile
 - NOTE: if you launch your app with replica, these replicas will connect together
-- if you want more advanced setup, you can setup for ex a front node to enqueue task, and other worker node to handle them
-   * NOTE: it can be achieved even if the front and worker are the same app, for front node, just set the nbWorker to 0, and for worker node disable the **lazyCreation**
+- if you want more advanced setup, you can setup for ex a front node to enqueue task, and other working node to handle them
+   * NOTE: it can be achieved even if the front and worker are the same app, for front node, just set the nbWorker to 0, and for working node disable the **lazyCreation**
 - Sync and Sync with result, cancel function are also implemented
-- no load balancing implemented, the task will be taken to the nearest (to the one have min ping time to redis ) worker node. But load balancing is possible:
+- no load balancing implemented, the task will be taken to the nearest (to the one have min ping time to redis ) working node. But load balancing is possible:
    * we use redisson free version we don't have that function, if you use pro version you will have [BlockingFairQueue](https://github.com/redisson/redisson/wiki/7.-distributed-collections#713-blocking-fair-queue)
-   * you can launch multiple worker node with only one worker for each, then the worker node can take only one task :), that will you load balance the tasks
+   * you can launch multiple working node with only one worker for each, then the working node can take only one task :), that will you load balance the tasks
 - no monitoring mode for all connected node :(
 
 ### To develop your own mode
@@ -85,8 +82,8 @@ Example of usage:
 public class RedisWorkerPoolExample {
     @Autowired
     public RedisWorkerPoolExample (
-            @Value(xxxx) int nbWorker, // for front node set 0, for worker node set nb worker you want per worker node
-            IWorkerPoolHelper redisHelper // if you import the WorkerConfig and active the redis-workerpool
+            @Value(xxxx) int nbWorker, // for front node set 0, for working node set nb worker you want per working node
+            IWorkerPoolHelper redisHelper // if you import the WorkerPoolConfiguration and active the redis-workerpool
     ) {
         super(new WorkerPoolSetup()
                 .setMaxNbWorker(nbWorker)
@@ -98,7 +95,6 @@ public class RedisWorkerPoolExample {
 }
 
 ```
-
 
 ## Monitoring
 - basic monitoring is created for local mode, you can check toDo, processing list size and nb of worker launched

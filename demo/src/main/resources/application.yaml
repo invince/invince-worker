@@ -1,0 +1,16 @@
+spring:
+  profiles:
+    active: redis-workerpool
+
+  redis:
+    host: localhost
+    port: 6379
+
+worker:
+  nbWorker: 10
+
+logging:
+  level:
+    com:
+      invince:
+        worker: DEBUG

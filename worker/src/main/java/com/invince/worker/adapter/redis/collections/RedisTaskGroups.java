@@ -12,6 +12,13 @@ import java.util.Queue;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 
+/**
+ * RedisTaskGroups:
+ *     each group is a RQueue of taskFuture (on CompletableTaskFuture you can find the task key, task prefix)
+ *
+ * @param <GroupByType> groupKey type
+ * @param <SingleResult> result type for a single task
+ */
 public class RedisTaskGroups<GroupByType, SingleResult> implements ITaskGroups<GroupByType, SingleResult> {
 
     private static final String TASK_GROUPS = "$TASK_GROUPS$:::";
@@ -26,6 +33,15 @@ public class RedisTaskGroups<GroupByType, SingleResult> implements ITaskGroups<G
         this.workerPoolPrefix = workerPoolPrefix;
     }
 
+
+    /**
+     * Get or Create the RQueue for that group.
+     *  - we create and return a local copy (because we cannot save CompletableTaskFuture on redis, it's not serializable)
+     *  - if we add something on that copy, it will trigger the addition to redis RQueue
+     *
+     * @param group group key
+     * @return the queue of taskFuture of that group
+     */
     @Override
     public Queue<CompletableTaskFuture<SingleResult>> getOrCreate(GroupByType group) {
         var taskKeysForThisGroup = getRedisQueue(group);
@@ -51,11 +67,20 @@ public class RedisTaskGroups<GroupByType, SingleResult> implements ITaskGroups<G
         return rt;
     }
 
+    /**
+     * Check if group exist and if we have already taskFuture in it
+     * @param group group key
+     * @return if group exist and if we have already taskFuture in it
+     */
     @Override
     public boolean existNotEmptyGroup(GroupByType group) {
-        return isEmpty(getRedisQueue(group));
+        return !isEmpty(getRedisQueue(group));
     }
 
+    /**
+     * remove the group
+     * @param group group key
+     */
     @Override
     public void remove(GroupByType group) {
         var queue = getRedisQueue(group);

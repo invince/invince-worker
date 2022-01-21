@@ -7,6 +7,11 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
+/**
+ * ProcessingTaskWrapper is what we put inside redis RedisProcessingTasks
+ * we store the task + the poolUid of which the task is being processed (in distributed mode, to identify which working node)
+ * @param <V> the task type
+ */
 @AllArgsConstructor
 @NoArgsConstructor
 @Data

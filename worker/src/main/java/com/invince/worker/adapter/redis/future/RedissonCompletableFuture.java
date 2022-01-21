@@ -1,12 +1,16 @@
 package com.invince.worker.adapter.redis.future;
 
-import com.invince.worker.core.ITaskContext;
+import com.invince.worker.core.ITaskIdentify;
 import com.invince.worker.core.future.CompletableTaskFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 
 import java.util.Set;
 
+/**
+ * Redis version of CompletableTaskFuture
+ * @param <T> result type
+ */
 @Slf4j
 public class RedissonCompletableFuture<T> extends CompletableTaskFuture<T> {
 
@@ -17,22 +21,34 @@ public class RedissonCompletableFuture<T> extends CompletableTaskFuture<T> {
     private final RedissonClient redisson;
     private final RedissonCompletableTaskFutureHelper helper;
 
-    RedissonCompletableFuture(RedissonClient redisson, RedissonCompletableTaskFutureHelper helper, ITaskContext taskContext) {
+    RedissonCompletableFuture(RedissonClient redisson, RedissonCompletableTaskFutureHelper helper, ITaskIdentify taskContext) {
         super(taskContext);
         this.redisson = redisson;
         this.helper = helper;
     }
 
+    /**
+     * cf RedissonCompletableTaskFutureHelper for more detail
+     * @return the result when task finishes
+     */
     @Override
     public T join() {
         return helper.join(this);
     }
 
+    /**
+     * @return to check if task isDone
+     */
     @Override
     public boolean isDone() {
         return !redisson.isShutdown() && getIsDoneSet().contains(getKey());
     }
 
+    /**
+     * cf RedissonCompletableTaskFutureHelper for more detail
+     * to publish complete event in redis
+     * @return successful or not
+     */
     // 1. put key into getIsDoneSet
     // 2. put result into getResultBlockingQueue
     @Override
@@ -47,6 +63,11 @@ public class RedissonCompletableFuture<T> extends CompletableTaskFuture<T> {
 
     }
 
+    /**
+     * cf RedissonCompletableTaskFutureHelper for more detail
+     * to publish completeExceptionally event in redis
+     * @return successful or not
+     */
     @Override
     public boolean completeExceptionally(Throwable ex) {
         try {
@@ -58,11 +79,17 @@ public class RedissonCompletableFuture<T> extends CompletableTaskFuture<T> {
         }
     }
 
+    /**
+     * @return to check if task isCompletedExceptionally
+     */
     @Override
     public boolean isCompletedExceptionally() {
         return !redisson.isShutdown() && getIsCompletedExceptionallySet().contains(getKey());
     }
 
+    /**
+     * @return to check if task isCancelled
+     */
     @Override
     public boolean isCancelled() {
         return !redisson.isShutdown() && getIsCancelledSet().contains(getKey());

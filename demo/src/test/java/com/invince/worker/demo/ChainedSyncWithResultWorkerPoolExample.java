@@ -1,3 +1,5 @@
+package com.invince.worker.demo;
+
 import com.invince.worker.core.AbstractChainedTaskWithResult;
 import com.invince.worker.core.ChainedSyncWithResultWorkerPool;
 import com.invince.worker.core.WorkerPoolSetup;
@@ -6,8 +8,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.function.Function;
 
 class ChainedSyncWithResultWorkerPoolExample {
+
+    private static Function<List<Integer>, Integer> sumFn = val -> val.stream().reduce(0,Integer::sum);
 
     @Test
     void test() {
@@ -46,7 +51,7 @@ class ChainedSyncWithResultWorkerPoolExample {
         }
     }
 
-    private class Multiple2Task extends AbstractChainedTaskWithResult<String, Integer> {
+    private static class Multiple2Task extends AbstractChainedTaskWithResult<String, Integer> {
 
         @Override
         public Integer doProcess(CompletableTaskFuture<Integer> taskFuture) {
@@ -54,7 +59,7 @@ class ChainedSyncWithResultWorkerPoolExample {
         }
     }
 
-    private class Multiple2WorkerPool extends ChainedSyncWithResultWorkerPool<Multiple2Task, String, Integer, Integer> {
+    private static class Multiple2WorkerPool extends ChainedSyncWithResultWorkerPool<Multiple2Task, String, Integer, Integer> {
 
         public Multiple2WorkerPool() {
             super(new WorkerPoolSetup().setMaxNbWorker(2));
@@ -66,7 +71,7 @@ class ChainedSyncWithResultWorkerPoolExample {
         }
     }
 
-    private class SquareTask extends AbstractChainedTaskWithResult<String, Integer> {
+    private static class SquareTask extends AbstractChainedTaskWithResult<String, Integer> {
 
         @Override
         public Integer doProcess(CompletableTaskFuture<Integer> taskFuture) {
@@ -74,10 +79,10 @@ class ChainedSyncWithResultWorkerPoolExample {
         }
     }
 
-    private class SquareWorkerPool extends ChainedSyncWithResultWorkerPool<SquareTask, String, Integer, Integer> {
+    private static class SquareWorkerPool extends ChainedSyncWithResultWorkerPool<SquareTask, String, Integer, Integer> {
 
         public SquareWorkerPool() {
-            super(new WorkerPoolSetup().setMaxNbWorker(2), val -> val.stream().reduce(0, Integer::sum));
+            super(new WorkerPoolSetup().setMaxNbWorker(2), sumFn);
         }
 
         @Override

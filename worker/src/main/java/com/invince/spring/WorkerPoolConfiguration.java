@@ -9,7 +9,7 @@ import org.springframework.context.event.EventListener;
 @ComponentScan({
         "com.invince.worker"
 })
-public class WorkerConfig {
+public class WorkerPoolConfiguration {
 
     public static final String PROFILE_REDIS = "redis-workerpool";
 

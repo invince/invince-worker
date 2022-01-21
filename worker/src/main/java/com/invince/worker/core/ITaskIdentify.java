@@ -1,6 +1,11 @@
 package com.invince.worker.core;
 
-public interface ITaskContext {
+import java.io.Serializable;
+
+/**
+ * Task Identify
+ */
+public interface ITaskIdentify extends Serializable {
     String getPrefix();
 
     String getKey();

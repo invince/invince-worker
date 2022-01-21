@@ -10,6 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * OneshotWorker process only one task, used in unlimited mode
+ * @param <T> task type
+ */
 @Slf4j
 public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> implements Runnable {
 
@@ -28,15 +32,12 @@ public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> i
                 .nonNull(toDo, processing);
         this.toDo = toDo;
         this.processing = processing;
-        this.toDo.subscribe(()-> {
-            if(!isDone() && !isCompletedExceptionally() && !isCancelled()) {
-                log.info("[OneshotWorker]: task finishes");
-                this.complete(null);
-            }
-        });
     }
 
 
+    /**
+     * process the task taken from todo list
+     */
     @Override
     public void run() {
         try {

@@ -32,6 +32,13 @@ public abstract class ChainedSyncWithResultWorkerPool
         super(config, gatherFn);
     }
 
+    /**
+     * Chain another ChainedSyncWithResultWorkerPool.
+     * if this pool has already chained pool, then the new pool will be chain to the end
+     *
+     * @param nextPool the pool to chain
+     * @return self
+     */
     public ChainedSyncWithResultWorkerPool<T, GroupByType, SingleResultWithParam, GatheredResult> chain(
             ChainedSyncWithResultWorkerPool<?, GroupByType, SingleResultWithParam, GatheredResult> nextPool) {
         if (nextPool != null) {

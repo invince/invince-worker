@@ -12,6 +12,16 @@ import java.util.stream.Collectors;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 
+/**
+ * with this, you can combine a list of workerPool (like a gateway)
+ * when you enqueue a task, we'll check workerPoolPredicate one by one, if predicate matches, the task will be redirected to that pool
+ * Example of usage:
+ * - you can define a workerPool for small task, and a workerPool for heavy task
+ * - if task is small, we enqueue it into small queue (for ex: if you're in redis mode, the working node for small queue can have 10 workers)
+ * - if it's heavy one, it goes to heavy queue (for ex: if you're in redis mode, the working node for heavy queue has only 1 worker)
+ *
+ * @param <T> task type
+ */
 @Slf4j
 public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
 
@@ -25,6 +35,9 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         this.defaultPool = defaultPool;
     }
 
+    /**
+     * @return todo list size, used in monitor service
+     */
     @Override
     public int getToDoListSize() {
         int total = defaultPool.getToDoListSize();
@@ -35,6 +48,9 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return total;
     }
 
+    /**
+     * @return processing list size, used in monitor service
+     */
     @Override
     public int getProcessingListSize() {
         int total = defaultPool.getProcessingListSize();
@@ -45,6 +61,9 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return total;
     }
 
+    /**
+     * @return nb of permanent worker started, used in monitor service
+     */
     @Override
     public int getPermanentWorkerSize() {
         int total = defaultPool.getPermanentWorkerSize();
@@ -55,6 +74,13 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return total;
     }
 
+    /**
+     * Enqueue a task in the workpool
+     * - when you enqueue a task, we'll check workerPoolPredicate one by one, if predicate matches, the task will be redirected to that pool
+     *
+     * @param task task
+     * @return the task
+     */
     @Override
     public T enqueue(T task) {
         if (!isEmpty(pools)) {
@@ -70,6 +96,10 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return defaultPool.enqueue(task);
     }
 
+    /**
+     * @param key task key
+     * @return if task exists in todo list
+     */
     @Override
     public boolean existToDoTask(String key) {
         if (!isEmpty(pools)) {
@@ -80,6 +110,10 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return defaultPool.existToDoTask(key);
     }
 
+    /**
+     * @param key task key
+     * @return if task exists in processing list
+     */
     @Override
     public boolean existProcessingTask(String key) {
         if (!isEmpty(pools)) {
@@ -90,6 +124,12 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return defaultPool.existProcessingTask(key);
     }
 
+    /**
+     * remove the task via
+     *
+     * @param key task key
+     * @return the removed task
+     */
     @Override
     public T removeTask(String key) {
         AtomicReference<T> result = new AtomicReference<>();
@@ -109,6 +149,11 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         return result.get();
     }
 
+    /**
+     * shutdown the all the workpool
+     *
+     * @param await if we wait current process finish
+     */
     @Override
     public void shutdown(boolean await) {
         if (!isEmpty(pools)) {
@@ -117,6 +162,12 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
         defaultPool.shutdown(await);
     }
 
+    /**
+     * cancel a task (no matter it's in todo list or processing list)
+     * - we'll match first which pool process it, then call pool.cancelTask
+     *
+     * @param key task list
+     */
     @Override
     public void cancelTask(String key) {
         if (!isEmpty(pools)) {

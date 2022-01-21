@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @param <T> type of the result
  */
 @Slf4j
-public abstract class BaseTask<T> implements ITaskContext, Serializable {
+public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
 
     protected ZonedDateTime queuedTime;
     protected ZonedDateTime startTime;
