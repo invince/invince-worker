@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <artifactId>worker-parent</artifactId>
-        <groupId>com.invince.worker</groupId>
+        <groupId>io.github.invince</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
@@ -37,7 +37,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.invince.worker</groupId>
+            <groupId>io.github.invince</groupId>
             <artifactId>worker</artifactId>
             <version>${project.version}</version>
         </dependency>
