@@ -7,6 +7,7 @@ import com.invince.worker.core.collections.IProcessingTasks;
 import com.invince.worker.core.collections.IToDoTasks;
 import com.invince.worker.core.helper.IWorkerPoolHelper;
 import com.invince.worker.core.future.ICompletableTaskFutureService;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private final ThreadPoolExecutor executor;
 
+    @Getter
     protected final WorkerPoolSetup config;
     protected final String poolUid;
 
@@ -52,7 +54,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         } else if (config.getMaxNbWorker() > 0){
             this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(config.getMaxNbWorker(), namedThreadFactory);
         } else {
-            throw new WorkerError("Invalid worker pool setup");
+            this.executor = null; // for a front node maybe
         }
         beforeInit();
         init();
@@ -61,8 +63,8 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private void init() {
         IWorkerPoolHelper ioc = config.getHelper();
-        this.toDo = ioc.newToDoTasks(config.getName());
-        this.processingTasks = ioc.newProcessingTasks(config.getName(), poolUid);
+        this.toDo = ioc.newToDoTasks(config.getQueueName());
+        this.processingTasks = ioc.newProcessingTasks(config.getQueueName(), poolUid);
         this.completableTaskFutureService = ioc.getCompletableTaskFutureService();
         if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
             for (int i = 0; i < config.getMaxNbWorker(); i++) {
@@ -184,6 +186,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private void newWorker() {
         StandardWorker<T> worker = new StandardWorker<>(completableTaskFutureService, toDo, processingTasks);
+        toDo.startListening();
         permanentWorkers.add(worker);
         executor.execute(worker);
         log.debug("{} new worker created", getClass().getSimpleName());
@@ -192,6 +195,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private void newTempWorker() {
         OneshotWorker<T> worker = new OneshotWorker<>(completableTaskFutureService, toDo, processingTasks);
+        toDo.startListening();
         tempWorkers.add(worker);
         executor.execute(worker);
         log.debug("{} new temp worker created", getClass().getSimpleName());

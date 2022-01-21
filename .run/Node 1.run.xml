@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Node 1" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="demo" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.invince.worker.demo.RedisWorkPoolTestApplication" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <option name="SHORTEN_COMMAND_LINE" value="NONE" />
+    <additionalParameters>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="worker.nbWorker" />
+        <option name="value" value="0" />
+      </param>
+    </additionalParameters>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

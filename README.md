@@ -10,7 +10,7 @@ Why do this?
 - you can even distribute your task in a shared queue (we provide redis version, but you can implement your own), so the replica/other app can join and process together
 
 ## How to use it
-- this project is spring based, include **WorkerConfig** configuration.
+- this project is spring based, include **WorkerPoolConfiguration** configuration.
 - first decide which kind of workerPool (cf Different type of workerPool part)
 - Then create the Task class based the parent task type of that workerPool type. for ex: for SyncWithResultWorkerPool, you need create a Task extends AbstractStandardTaskWithResult
   * NOTE: if you want to use distributed mode, your task class should be serializable, for ex: if you use spring, you cannot inject spring bean/service in it
@@ -56,9 +56,6 @@ Example of usage:
   * if task is small, we enqueue it into small queue (for ex: if you're in redis mode, the working node for small queue can have 10 workers)
   * if it's heavy one, it goes to heavy queue (for ex: if you're in redis mode, the working node for heavy queue has only 1 worker)
 
-### CompositeSyncWorkerPool
-- in additional of above, you can **waitUntilFinish**
-
 ## Different Mode
 
 ### Default Mode
@@ -86,7 +83,7 @@ public class RedisWorkerPoolExample {
     @Autowired
     public RedisWorkerPoolExample (
             @Value(xxxx) int nbWorker, // for front node set 0, for working node set nb worker you want per working node
-            IWorkerPoolHelper redisHelper // if you import the WorkerConfig and active the redis-workerpool
+            IWorkerPoolHelper redisHelper // if you import the WorkerPoolConfiguration and active the redis-workerpool
     ) {
         super(new WorkerPoolSetup()
                 .setMaxNbWorker(nbWorker)
@@ -98,7 +95,6 @@ public class RedisWorkerPoolExample {
 }
 
 ```
-
 
 ## Monitoring
 - basic monitoring is created for local mode, you can check toDo, processing list size and nb of worker launched

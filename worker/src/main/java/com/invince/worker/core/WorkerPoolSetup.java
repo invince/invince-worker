@@ -16,7 +16,7 @@ import java.util.UUID;
 @Getter
 public class WorkerPoolSetup {
 
-    private String name = UUID.randomUUID().toString();
+    private String queueName = UUID.randomUUID().toString();
 
     private int maxNbWorker;
 

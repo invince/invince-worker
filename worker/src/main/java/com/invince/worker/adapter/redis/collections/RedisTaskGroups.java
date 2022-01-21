@@ -74,7 +74,7 @@ public class RedisTaskGroups<GroupByType, SingleResult> implements ITaskGroups<G
      */
     @Override
     public boolean existNotEmptyGroup(GroupByType group) {
-        return isEmpty(getRedisQueue(group));
+        return !isEmpty(getRedisQueue(group));
     }
 
     /**

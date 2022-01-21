@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
-import static com.invince.spring.WorkerConfig.PROFILE_REDIS;
+import static com.invince.spring.WorkerPoolConfiguration.PROFILE_REDIS;
 
 /**
  * RedisCompletableTaskFutureService to help generate/simulate distribute CompletableTaskFuture from a baseTask

@@ -5,6 +5,11 @@ import com.invince.worker.core.BaseTask;
 public interface IToDoTasks {
 
     /**
+     * Start listen to the todo list, if nbWorker = 0, we don't start it
+     */
+    default void startListening() {}
+
+    /**
      *
      * @return size of the todo list
      */

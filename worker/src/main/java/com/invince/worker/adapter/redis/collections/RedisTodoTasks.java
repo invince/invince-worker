@@ -31,16 +31,21 @@ public class RedisTodoTasks implements IToDoTasks {
       */
     private final LinkedBlockingQueue<BaseTask> blockingQueueLocal = new LinkedBlockingQueue<>();
 
-    private final AtomicBoolean listenerLaunched = new AtomicBoolean(false);
+    private final AtomicBoolean listenRunning = new AtomicBoolean(false);
     private ExecutorService listenerExecutor;
 
     public RedisTodoTasks(RedissonClient redisson, String prefix) {
         this.redisson = redisson;
         this.prefix = prefix;
-
-        listenToRBlockingQueue();
     }
 
+    /**
+     * Start listen to the todo list, if nbWorker = 0, we don't start it
+     */
+    @Override
+    public void startListening() {
+        listenToRBlockingQueue();
+    }
 
     /**
      *
@@ -94,32 +99,35 @@ public class RedisTodoTasks implements IToDoTasks {
 
     // reduce usage of redis, otherwise every worker do RBlockingQueue.take
     private void listenToRBlockingQueue() {
-        listenerExecutor = Executors.newSingleThreadExecutor();
-        listenerExecutor.execute(() -> {
-            try {
-                BaseTask task;
-                do {
-                    try {
-                        task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
-                        if (task != null) { // normally impossible null
-                            if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
-                                task.cancelToDo();
-                                redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
+        if(!listenRunning.get()) {
+            listenRunning.set(true);
+            listenerExecutor = Executors.newSingleThreadExecutor();
+            listenerExecutor.execute(() -> {
+                try {
+                    BaseTask task;
+                    do {
+                        try {
+                            task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
+                            if (task != null) { // normally impossible null
+                                if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {
+                                    task.cancelToDo();
+                                    redisson.getList(prefix + KEYS_TO_CANCEL).remove(task.getKey());
+                                }
+                                blockingQueueLocal.add(task);
                             }
-                            blockingQueueLocal.add(task);
+                        } catch (Exception e) {
+                            if (e instanceof InterruptedException) {
+                                throw e;
+                            }
+                            log.error(e.getMessage(), e);
                         }
-                    } catch (Exception e) {
-                        if (e instanceof InterruptedException) {
-                            throw e;
-                        }
-                        log.error(e.getMessage(), e);
-                    }
-                } while (listenerLaunched.get());
-            } catch (InterruptedException e) {
-                log.error(e.getMessage(), e);
-                Thread.currentThread().interrupt();
-            }
-        });
+                    } while (listenRunning.get());
+                } catch (InterruptedException e) {
+                    log.error(e.getMessage(), e);
+                    Thread.currentThread().interrupt();
+                }
+            });
+        }
     }
 
     @Override
@@ -130,7 +138,8 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public void close() {
-        if (listenerLaunched.get() && listenerExecutor != null) {
+        if (listenRunning.get() && listenerExecutor != null) {
+            listenRunning.set(false);
             SafeRunner.run(listenerExecutor::shutdown);
         }
     }

@@ -11,17 +11,19 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.invince.spring.WorkerConfig.PROFILE_REDIS;
+import static com.invince.spring.WorkerPoolConfiguration.PROFILE_REDIS;
 
 /**
  * Helper to simulate join, complete, completeExceptionally... in redis mode
  */
 @Slf4j
 @Primary
+@Service
 @Profile(PROFILE_REDIS)
 public class RedissonCompletableTaskFutureHelper {
 
@@ -52,6 +54,7 @@ public class RedissonCompletableTaskFutureHelper {
         RTopic finishTopic = getFinishTopic();
         finishTopic.addListener(RedissonCompletableFutureResultHolder.class, (channel, resultHolder) -> {
             String uniqueKeyFinished = resultHolder.getUniqueKey();
+            log.debug("Finish {} event received", uniqueKeyFinished);
             if (waitedTask.containsKey(uniqueKeyFinished)) {
                 var future = waitedTask.get(uniqueKeyFinished);
                 if (future == null) {
