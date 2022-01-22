@@ -11,8 +11,8 @@
 
     <scm>
         <url>https://github.com/invince/invince-worker</url>
-        <connection>scm:git:git//github.com/invince/invince-worker.git</connection>
-        <developerConnection>scm:git:git@github.com:invince/invince-worker.git</developerConnection>
+        <connection>scm:git:${project.scm.url}</connection>
+        <developerConnection>scm:git:${project.scm.url}</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
