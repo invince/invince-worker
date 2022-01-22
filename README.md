@@ -88,6 +88,7 @@ Example of usage:
 ### To develop your own mode
 - please refer com.invince.worker.adapter package
 - you need implement toDo list, processing list, taskGroup, and taskFuture
+- then when you create a new workerPool, inject your IWorkerPoolHelper (which helps workerpool to know how to create toDo list, processing list, taskGroup and taskFuture)    
 
 ```java
 @Service
