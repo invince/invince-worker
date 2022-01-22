@@ -22,7 +22,7 @@ Why do this?
 ```java
 @Import(WorkerPoolConfiguration.class)
 ```
-- first decide which kind of workerPool (cf Different type of workerPool part)
+- first decide which kind of workerPool (cf [below](#different-type-of-workerpool))
 - Then create the Task class based the parent task type of that workerPool type. for ex: for SyncWithResultWorkerPool, you need create a Task extends AbstractStandardTaskWithResult
   * NOTE: if you want to use distributed mode, your task class should be serializable, for ex: if you use spring, you cannot inject spring bean/service in it
   * in that case, to help you, we created a **SpringContextHolder** class, you can do SpringContextHolder.getInstance(xxxx)
