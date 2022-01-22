@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * in additional of IWorkerPool, you can group your task when you enqueue them, and **waitUntilFinish** for all tasks in that group
+ * in additional of IWorkerPool, you can group your task when you enqueue them, and waitUntilFinish for all tasks in that group
  * @param <T> task type
  * @param <GroupByType> group key type
  * @param <SingleResult> SingleResult of a single task
@@ -26,7 +26,7 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
     }
 
     /**
-     * we need create the requestTaskMap to save the map between group -> tasks in this group
+     * we need create the requestTaskMap to save the map between group to tasks in this group
      */
     @Override
     protected void beforeInit() {

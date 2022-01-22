@@ -1,6 +1,9 @@
 package io.github.invince.exception;
 
-public class ToDoTaskCancelled extends TaskCancelled{
+/**
+ * Task cancelled when it's in todo list
+ */
+public class ToDoTaskCancelled extends TaskCancelled {
     public ToDoTaskCancelled(String key) {
         super(key);
     }

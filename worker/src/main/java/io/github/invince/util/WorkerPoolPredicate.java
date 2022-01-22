@@ -17,7 +17,14 @@ import java.util.function.Predicate;
 @AllArgsConstructor
 public class WorkerPoolPredicate<W extends IWorkerPool<T>, T extends BaseTask> {
 
+    /**
+     * If task matches the predicate, which workerPool will process the task
+     */
     @Getter private final W workerPool;
+
+    /**
+     * the predicate to check
+     */
     @Getter private final Predicate<T> predicate;
 
 }

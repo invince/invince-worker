@@ -25,7 +25,7 @@ public interface IToDoTasks {
     /**
      * Task a task
      * @return the task
-     * @throws InterruptedException
+     * @throws InterruptedException InterruptedException
      */
     BaseTask take() throws InterruptedException;
 

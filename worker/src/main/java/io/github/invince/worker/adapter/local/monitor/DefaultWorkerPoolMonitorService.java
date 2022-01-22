@@ -24,13 +24,17 @@ public class DefaultWorkerPoolMonitorService implements IWorkerPoolMonitorServic
 
     private final Map<String, List<WorkerPoolStatusBuilder>> db = new HashMap<>();
 
+    /**
+     *
+     * @param pools all the pools
+     */
     @Autowired
     public DefaultWorkerPoolMonitorService(List<StandardWorkerPool<?>> pools) {
         if (pools != null) {
             pools.stream()
                     .filter(one -> one != null
-                            && !StringUtils.isEmpty(one.getName())
-                            && !StringUtils.isEmpty(one.getGroupName())
+                            && !StringUtils.hasText(one.getName())
+                            && !StringUtils.hasText(one.getGroupName())
                     ).forEach(one -> {
                 db.putIfAbsent(one.getGroupName(), new ArrayList<>());
                 db.get(one.getGroupName()).add(new WorkerPoolStatusBuilder(one));
