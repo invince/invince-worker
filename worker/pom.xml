@@ -8,6 +8,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <name>Invince WorkerPool</name>
+    <description>Blocking Queue Style WorkerPool</description>
     <artifactId>workerpool</artifactId>
 
     <dependencies>
