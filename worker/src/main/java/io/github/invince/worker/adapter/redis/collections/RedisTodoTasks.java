@@ -63,13 +63,13 @@ public class RedisTodoTasks implements IToDoTasks {
      */
     @Override
     public boolean exist(String key) {
-        return !StringUtils.isEmpty(key) && getRedisBQ().stream().anyMatch(one -> key.equals(one.getKey()));
+        return !StringUtils.hasText(key) && getRedisBQ().stream().anyMatch(one -> key.equals(one.getKey()));
     }
 
     /**
      *
      * @return take element from blockingQueueLocal
-     * @throws InterruptedException
+     * @throws InterruptedException InterruptedException
      */
     @Override
     public BaseTask take() throws InterruptedException {
@@ -78,7 +78,7 @@ public class RedisTodoTasks implements IToDoTasks {
 
     @Override
     public void cancel(String key) {
-        if (!StringUtils.isEmpty(key)) {
+        if (!StringUtils.hasText(key)) {
             redisson.getList(prefix + KEYS_TO_CANCEL).add(key);
         }
     }

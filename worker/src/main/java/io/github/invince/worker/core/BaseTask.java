@@ -1,7 +1,7 @@
 package io.github.invince.worker.core;
 
 import com.google.common.base.Stopwatch;
-import io.github.invince.exception.InProgressingTaskCancelled;
+import io.github.invince.exception.InProcessingTaskCancelled;
 import io.github.invince.exception.WorkerError;
 import io.github.invince.exception.WorkerException;
 import io.github.invince.util.SafeRunner;
@@ -26,7 +26,7 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
     protected ZonedDateTime processedTime;
 
     private final String defaultKey;
-    private AtomicBoolean toBeCancelled = new AtomicBoolean(false);
+    private final AtomicBoolean toBeCancelled = new AtomicBoolean(false);
     protected AtomicBoolean toContinue = new AtomicBoolean(true) ;
 
     abstract void processInternal(CompletableTaskFuture<T> taskFuture);
@@ -89,10 +89,10 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
             this.processedTime = ZonedDateTime.now();
             log.debug("{} takes: {}, Queued at: {}, Starts at: {}, Processed at: {}",
                     getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime);
-        } catch (InProgressingTaskCancelled | CancellationException e) {
+        } catch (InProcessingTaskCancelled | CancellationException e) {
             log.error(e.getMessage(), e);
             SafeRunner.run(this:: onTaskCancelled);
-            taskFuture.completeExceptionally(new InProgressingTaskCancelled(getKey()));
+            taskFuture.completeExceptionally(new InProcessingTaskCancelled(getKey()));
             this.processedTime = ZonedDateTime.now();
             log.debug("{} takes: {}, Queued at: {}, Starts at: {}, but cancelled at: {}",
                     getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime);
@@ -159,7 +159,7 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
      */
     public void checkPoint() {
         if(!toContinue.get()) {
-            throw new InProgressingTaskCancelled(getKey());
+            throw new InProcessingTaskCancelled(getKey());
         }
     }
 

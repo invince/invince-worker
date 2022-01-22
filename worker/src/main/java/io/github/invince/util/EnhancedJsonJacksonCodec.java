@@ -14,6 +14,9 @@ import org.redisson.codec.JsonJacksonCodec;
 @UtilityClass
 public class EnhancedJsonJacksonCodec {
 
+    /**
+     * Default redisson JsonJacksonCodec + JavaTimeModule
+     */
     public BaseCodec get(){
         ObjectMapper om = new ObjectMapper();
         om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);

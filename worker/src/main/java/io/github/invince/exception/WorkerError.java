@@ -1,7 +1,13 @@
 package io.github.invince.exception;
 
-public class WorkerError extends WorkerException{
+/**
+ * Error, worker should stop immediately
+ */
+public class WorkerError extends WorkerException {
 
+    /**
+     * Helper to check error
+     */
     private static final WorkerExceptionHelperBuilder helper = new WorkerExceptionHelperBuilder(WorkerError::new);
 
     public WorkerError(String message, Throwable e) {
@@ -12,6 +18,10 @@ public class WorkerError extends WorkerException{
         super(message);
     }
 
+    /**
+     * @param message error message when verify fails
+     * @return WorkerExceptionHelperBuilder
+     */
     public static WorkerExceptionHelperBuilder.WorkerExceptionHelper verify(String message) {
         return helper.build(message);
     }

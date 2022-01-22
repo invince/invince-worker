@@ -12,7 +12,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
 
 /**
- * RedisProcessingTasks is a RMap of taskKey -> ProcessingTaskWrapper
+ * RedisProcessingTasks is a RMap of taskKey to ProcessingTaskWrapper
  *
  * @param <K> task key (we can use only task key, not the task uniqueKey, because each workerPool shall have its own IProcessingTasks)
  * @param <V> task type
@@ -31,6 +31,12 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
 
 
+    /**
+     *
+     * @param redisson redisson
+     * @param prefix the queue prefix
+     * @param poolUid the uid of the pool, in distributed mode, pool on each node should have different poolUid
+     */
     public RedisProcessingTasks(RedissonClient redisson, String prefix, String poolUid) {
         this.redisson = redisson;
         this.prefix = prefix;
@@ -102,7 +108,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public void cancel(String key) {
-        if (!StringUtils.isEmpty(key)) {
+        if (!StringUtils.hasText(key)) {
             RMap<K, ProcessingTaskWrapper<V>> map = getRedisMap();
             var wrapper = map.get(key);
             if (wrapper != null && poolUid.equals(wrapper.getPoolProcessIt())) {

@@ -7,7 +7,7 @@ import org.springframework.util.StringUtils;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * DefaultProcessingTasks is a ConcurrentHashMap of taskKey -> task
+ * DefaultProcessingTasks is a ConcurrentHashMap of taskKey to task
  *
  * @param <K> task key (we can use only task key, not the task uniqueKey, because each workerPool shall have its own IProcessingTasks)
  * @param <V> task type
@@ -32,7 +32,7 @@ public class DefaultProcessingTasks<K, V extends BaseTask> extends ConcurrentHas
      */
     @Override
     public void cancel(String key) {
-        if (!StringUtils.isEmpty(key)) {
+        if (!StringUtils.hasText(key)) {
             var task = get(key);
             if (task != null) {
                 task.cancelProcessing();

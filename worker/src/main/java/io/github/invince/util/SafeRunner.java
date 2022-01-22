@@ -3,6 +3,9 @@ package io.github.invince.util;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Utility to run code in safe mode, all exception will be catched
+ */
 @Slf4j
 @UtilityClass
 public class SafeRunner {

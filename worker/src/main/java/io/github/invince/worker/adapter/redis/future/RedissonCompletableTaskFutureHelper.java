@@ -126,6 +126,7 @@ public class RedissonCompletableTaskFutureHelper {
      * If the task is complete with a result on the working node, we shall publish that finishEvent with result in finishTopic
      * @param context task context
      * @param value the result
+     * @param <T> task type
      * @return successful or not
      */
     public <T> boolean complete(ITaskIdentify context, T value) {

@@ -19,6 +19,10 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
     // because when you take the task from toDo queue, before you put it into processing list,
     // this task is neither in todo nor in processing list, we need keep it somewhere before we put it into processing list
     private final Set<String> toDoKeyCopy = ConcurrentHashMap.newKeySet();
+
+    /**
+     * We keep a list of keys to cancel, when we take one task, if it's in this list, we set the flag toBeCancelled to true, then worker won't process it
+     */
     private final Set<String> keysToCancel = ConcurrentHashMap.newKeySet();
 
 
@@ -49,7 +53,7 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
      */
     @Override
     public void cancel(String key) {
-        if (!StringUtils.isEmpty(key)) {
+        if (!StringUtils.hasText(key)) {
             keysToCancel.add(key);
         }
     }
@@ -57,7 +61,7 @@ public class DefaultToDoTasks extends LinkedBlockingQueue<BaseTask> implements I
     /**
      * Task a task, if it's in the keysToCancel list, we'll call cancelToDo, and later in worker, we won't process it, just throw ToDoTaskCancelled exception
      * @return the task
-     * @throws InterruptedException
+     * @throws InterruptedException InterruptedException
      */
     @Override
     public BaseTask take() throws InterruptedException {

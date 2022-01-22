@@ -16,7 +16,7 @@ public class SpringContextHolder {
 
     private static ApplicationContext context;
 
-    private static Semaphore murex = new Semaphore(1);
+    private static final Semaphore murex = new Semaphore(1);
 
     static {
         try {
@@ -30,6 +30,10 @@ public class SpringContextHolder {
     private SpringContextHolder() {
     }
 
+    /**
+     * Bind the spring context
+     * @param context spring context
+     */
     public static synchronized void init(ApplicationContext context) {
         if (SpringContextHolder.context == null) {
             SpringContextHolder.context = context;
@@ -39,6 +43,12 @@ public class SpringContextHolder {
         }
     }
 
+    /**
+     * Get instance of given class type
+     * @param tClass class type
+     * @param <T> class type
+     * @return the bean if exists
+     */
     public static <T> T getInstance(Class<T> tClass) {
         try {
             murex.acquire();
@@ -54,6 +64,12 @@ public class SpringContextHolder {
         }
     }
 
+    /**
+     * Get instance of given class type. By default returns the default value
+     * @param tClass class type
+     * @param <T> class type
+     * @return the bean if exists, otherwise the default value
+     */
     public static <T> T getInstanceOrDefault(Class<T> tClass, T defaultVal) {
         if (context == null) {
             return defaultVal;
