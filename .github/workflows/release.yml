@@ -22,7 +22,7 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-          server-id: OSSRH
+          server-id: ossrh
           server-username: ${{ secrets.OSSRH_USERNAME }}
           server-password: ${{ secrets.OSSRH_TOKEN }}
 
