@@ -23,6 +23,11 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
+      - name: Configure Git user
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
       - name: Release Maven package
         uses: samuelmeuli/action-maven-publish@v1.4.0
         with:
