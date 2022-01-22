@@ -32,12 +32,10 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
 
-      - name: Build with Maven
-        run: mvn -B release:prepare
-
       - name: Release Maven package
         uses: samuelmeuli/action-maven-publish@v1.4.0
         with:
+          maven_goals_phases: -B release:prepare
           gpg_private_key: ${{ secrets.GPG_SECRET }}
           gpg_passphrase: ${{ secrets.GPG_PASS }}
           nexus_username: ${{ secrets.OSSRH_USERNAME }}
