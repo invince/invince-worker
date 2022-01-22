@@ -34,3 +34,7 @@ build/
 .vscode/
 
 secret.yaml
+
+release.properties
+*.releaseBackup
+

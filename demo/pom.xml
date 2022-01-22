@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>worker-parent</artifactId>
+        <artifactId>workerpool-parent</artifactId>
         <groupId>io.github.invince</groupId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>demo</artifactId>
-    <name>demo</name>
+    <artifactId>workerpool-demo</artifactId>
+    <name>workerpool-demo</name>
     <description>Demo project for worker pool</description>
 
     <dependencyManagement>
@@ -38,7 +37,7 @@
 
         <dependency>
             <groupId>io.github.invince</groupId>
-            <artifactId>worker</artifactId>
+            <artifactId>workerpool</artifactId>
             <version>${project.version}</version>
         </dependency>
 

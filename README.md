@@ -10,7 +10,18 @@ Why do this?
 - you can even distribute your task in a shared queue (we provide redis version, but you can implement your own), so the replica/other app can join and process together
 
 ## How to use it
+- in your pom add 
+```
+<dependency>
+  <groupId>io.github.invince</groupId>
+  <artifactId>workerpool</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
 - this project is spring based, include **WorkerPoolConfiguration** configuration.
+```java
+@Import(WorkerPoolConfiguration.class)
+```
 - first decide which kind of workerPool (cf Different type of workerPool part)
 - Then create the Task class based the parent task type of that workerPool type. for ex: for SyncWithResultWorkerPool, you need create a Task extends AbstractStandardTaskWithResult
   * NOTE: if you want to use distributed mode, your task class should be serializable, for ex: if you use spring, you cannot inject spring bean/service in it
@@ -20,7 +31,8 @@ Why do this?
   * either simply do new StandardWorkerPool<YourTaskClass>() (or other standard workerPool type)
   * or you can extend and develop your own workerPool class, for ex: a custom way to enqueue task. Or like enqueue a list of param, and split them into sub tasks
 - now you can enqueue cancel task, and waitUntilFinish if it's SyncWorkerPool or waitResultUntilFinish for a SyncWithResultWorkerPool ...
-
+- to active distributed **REDIS** mode cf [here](#redis-mode)
+ 
 ## Different type of workerPool
 
 ### StandardWorkerPool
