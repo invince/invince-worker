@@ -9,7 +9,7 @@
     <url>https://github.com/invince/invince-worker</url>
 
     <packaging>pom</packaging>
-    <version>0.9.3-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
 
     <scm>
         <url>https://github.com/invince/invince-worker</url>
