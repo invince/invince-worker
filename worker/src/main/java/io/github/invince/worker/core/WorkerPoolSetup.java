@@ -26,6 +26,8 @@ public class WorkerPoolSetup {
     // in distributed mode (for ex redis mode), we need create all the workers first, because we may enqueue task on other node
     private boolean isLazyCreation = true;
 
+    private int maxRetryTimes = 0;
+
     // for each mode, you need implements and set your helper (to tell workerPool how to create toDo, processing list, taskGroup and how to bind a task to a CompletableTaskFuture)
     private IWorkerPoolHelper helper = new DefaultWorkerPoolHelper();
 }
