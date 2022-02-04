@@ -47,8 +47,8 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
             do {
                 task = toDo.take();
                 if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
+                    var taskFuture = completableTaskFutureService.getOrWrap(task);
                     try {
-                        var taskFuture = completableTaskFutureService.getOrWrap(task);
                         log.debug("{} starts at {}, stills has {} tasks in todo list", task.getUniqueKey(), ZonedDateTime.now(), toDo.size());
                         processing.put(task.getKey(), (T) task);
                         toDo.movedToProcessing(task.getKey());
@@ -63,14 +63,21 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                         }
                         processing.remove(task.getKey());
                         counter++;
+                        if (taskFuture.isToRetry()) {
+                            toDo.add(task);
+                        }
                     } catch (Exception e) {
                         log.error(e.getMessage(), e);
                     }
                 }
             } while (task != null && !(task instanceof FinishTask));
         } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
             Thread.currentThread().interrupt();
-            throw new WorkerError(e.getMessage(), e);
+            this.completeExceptionally(e);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            this.completeExceptionally(e);
         } finally {
             log.info("[StandardWorker]: Finish flag received, worker will be shutdown, {} task processed.", counter);
             this.complete(null);

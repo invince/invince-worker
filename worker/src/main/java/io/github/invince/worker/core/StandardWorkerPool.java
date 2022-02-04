@@ -118,6 +118,11 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
             newWorker();
         }
         task.onEnqueueSafe();
+
+        if(config.getMaxRetryTimes() > 0) {
+            task.setRetryChances(config.getMaxRetryTimes());
+        }
+
         if(!this.toDo.add(task)){
             log.error("Fail to add {} into to do list", task.getKey());
         }

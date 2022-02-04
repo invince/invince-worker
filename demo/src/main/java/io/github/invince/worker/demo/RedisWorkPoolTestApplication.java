@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Import;
 
 /**
  * Launch a local redis, for ex: via docker
- * - be careful, check if redis contains data from previous run, you may be blocked because previous task won't never send FinishEvent
+ * - be careful, check if redis contains data from previous run, you may be blocked because previous task will never send FinishEvent
  * Launch 2 instance of your app (intellij run config is included in .run)
  * - NOTE: set different port
  * - set nbWorker of 1st node to 0

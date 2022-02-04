@@ -53,13 +53,20 @@ public class OneshotWorker<T extends BaseTask> extends CompletableFuture<Void> i
                     processing.put(task.getKey(), (T) task);
                     toDo.movedToProcessing(task.getKey());
                     task.process(taskFuture);
-                    processing.remove(task.getKey());
                     log.debug("{} finishes at {}, stills has {} tasks in processing", task.getUniqueKey(), ZonedDateTime.now(), processing.size());
+                    processing.remove(task.getKey());
+                    if (taskFuture.isToRetry()) {
+                        toDo.add(task);
+                    }
                 }
             }
         } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
             Thread.currentThread().interrupt();
-            throw new WorkerError(e.getMessage(), e);
+            this.completeExceptionally(e);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            this.completeExceptionally(e);
         } finally {
             log.info("[OneshotWorker]: task finishes");
             this.complete(null);
