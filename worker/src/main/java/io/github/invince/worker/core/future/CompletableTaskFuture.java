@@ -19,6 +19,7 @@ public class CompletableTaskFuture <SingleResult> extends CompletableFuture<Sing
 
     private String prefix;
     private String key;
+    private boolean toRetry;
 
     public CompletableTaskFuture(ITaskIdentify context) {
         WorkerError.verify("Null context to copy")

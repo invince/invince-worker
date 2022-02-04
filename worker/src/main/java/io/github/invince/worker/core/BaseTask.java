@@ -6,6 +6,7 @@ import io.github.invince.exception.WorkerError;
 import io.github.invince.exception.WorkerException;
 import io.github.invince.util.SafeRunner;
 import io.github.invince.worker.core.future.CompletableTaskFuture;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
@@ -25,9 +26,11 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
     protected ZonedDateTime startTime;
     protected ZonedDateTime processedTime;
 
-    private final String defaultKey;
     private final AtomicBoolean toBeCancelled = new AtomicBoolean(false);
-    protected AtomicBoolean toContinue = new AtomicBoolean(true) ;
+    protected final AtomicBoolean toContinue = new AtomicBoolean(true) ;
+    private final String defaultKey;
+    @Setter
+    private int retryChances = 0;
 
     abstract void processInternal(CompletableTaskFuture<T> taskFuture);
 
@@ -48,9 +51,15 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
 
     /**
      * Be called when task on error
-     * @param e the exception you catched
+     * @param e the exception you caught
      */
     protected void onError(Exception e) {}
+
+    /**
+     * Be called when a retryable (the retry chance still greater than 1) task fails, and before it re-start
+     */
+    protected void onRollbackBeforeRetry() {}
+
 
     /**
      * Be called when task cancelled before it starts
@@ -82,9 +91,11 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
             throw new WorkerException(getUniqueKey() + " failed: ", ex);
         });
         try {
+            taskFuture.setToRetry(false); // Re-init toRetry
             this.startTime = ZonedDateTime.now();
             SafeRunner.run(this::onStart);
             processInternal(taskFuture);
+
             SafeRunner.run(this::onFinish);
             this.processedTime = ZonedDateTime.now();
             log.debug("{} takes: {}, Queued at: {}, Starts at: {}, Processed at: {}",
@@ -98,13 +109,23 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
                     getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            SafeRunner.run(() -> onError(e));
-            taskFuture.completeExceptionally(new WorkerError(getKey() + " failed"));
             this.processedTime = ZonedDateTime.now();
-            log.debug("{} takes: {}, Queued at: {}, Starts at: {}, but failed at: {}",
-                    getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime);
+            if(retryChances-- > 0) {
+                taskFuture.setToRetry(true); // worker will put it back into toDo list
+                log.debug("{} takes: {}, Queued at: {}, Starts at: {}, but failed at: {}. We'll retry it. Task has still {} retry chances",
+                        getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime, retryChances);
+                SafeRunner.run(this::onRollbackBeforeRetry);
+            } else {
+                taskFuture.completeExceptionally(new WorkerError(getKey() + " failed"));
+                log.debug("{} takes: {}, Queued at: {}, Starts at: {}, but failed at: {}",
+                        getUniqueKey(), timer.stop(), queuedTime, startTime, processedTime);
+                SafeRunner.run(() -> onError(e));
+            }
         } finally {
-            if (!taskFuture.isDone() && !taskFuture.isCancelled() && !taskFuture.isCompletedExceptionally()) {
+            if (!taskFuture.isToRetry()
+                    && !taskFuture.isDone()
+                    && !taskFuture.isCancelled()
+                    && !taskFuture.isCompletedExceptionally()) {
                 log.error("{} is not done, not completed exceptionally and not cancelled, please check your code",
                         getUniqueKey());
                 taskFuture.completeExceptionally(new WorkerError(getKey() + " failed"));
