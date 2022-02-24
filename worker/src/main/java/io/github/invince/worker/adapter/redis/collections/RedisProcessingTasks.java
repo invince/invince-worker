@@ -6,10 +6,13 @@ import io.github.invince.worker.adapter.redis.collections.model.ProcessingTaskWr
 import io.github.invince.worker.core.BaseTask;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
 import org.redisson.api.RMap;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
+
+import java.util.function.Consumer;
 
 /**
  * RedisProcessingTasks is a RMap of taskKey to ProcessingTaskWrapper
@@ -20,13 +23,16 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingTasks<K, V> {
 
+    private static final String ALIVE_FLAG = "$ALIVE_FLAG$";
     private static final String PROCESSING_LIST = "$PROCESSING_LIST$";
+    private static final String PROCESSING_LIST_CRASH_SAFE = "$PROCESSING_LIST_CRASH_SAFE$";
     private static final String CANCEL_PROCESSING_TOPIC = "$CANCEL_PROCESSING_TOPIC$";
 
     private final RedissonClient redisson;
 
     private final String prefix;
     private final String poolUid;
+    private final RLock aliveFlag; // RLock has a watchDog check, if app crashes, the lock will be released in next check
 
     private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
 
@@ -51,13 +57,18 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
                 log.warn("Null key to cancel");
                 return;
             }
-            RMap<K, ProcessingTaskWrapper<V>> map = getRedisMap();
+            RMap<K, ProcessingTaskWrapper<V>> map = getRedisProcessingMap();
             var wrapper = map.get(keyToCancel);
             if (wrapper != null && poolUid.equals(wrapper.getPoolProcessIt())) {
                 cancelInLocal(keyToCancel);
             }
         });
+
+        aliveFlag = getAliveFlagForPool(poolUid);
+        aliveFlag.lock();
     }
+
+
 
     /**
      * Put a task into processingTasks.
@@ -69,7 +80,12 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public V put(K key, V task) {
-        getRedisMap().put(key, new ProcessingTaskWrapper<>(task, poolUid));
+        // put it into redis processing list
+        getRedisProcessingMap().put(key, new ProcessingTaskWrapper<>(task, poolUid));
+        // put it into redis crash safe list
+        getRedisCrashSafeMap().put(key, task);
+
+        // put it into local copy
         tasksProcessingOnThisInstance.put(key, task);
         log.debug("Task {} move to redis processing map", task.getKey());
         return task;
@@ -85,7 +101,11 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public V remove(Object key) {
-        var wrapper = getRedisMap().remove(key);
+        // remove it from redis processing list
+        var wrapper = getRedisProcessingMap().remove(key);
+        // remove it from redis crash safe list
+        getRedisCrashSafeMap().remove(key);
+        // remove it from local copy
         tasksProcessingOnThisInstance.remove(key);
         log.debug("Task {} removed from redis processing map", key);
         return wrapper.getTask();
@@ -98,7 +118,23 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public boolean exist(K key) {
-        return getRedisMap().containsKey(key);
+        var processingList = getRedisProcessingMap();
+        var taskWrapper = processingList.get(key);
+        if (taskWrapper != null) {
+            if (getAliveFlagForPool(taskWrapper.getPoolProcessIt()).isLocked()) {
+                // means the pool (of that worker node) is still alive
+                return true;
+            } else {
+                // the pool process that task is dead
+                // remove it from redis processing list
+                getRedisProcessingMap().remove(key);
+                // remove it from local copy
+                tasksProcessingOnThisInstance.remove(key);
+                return false;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -109,7 +145,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public void cancel(String key) {
         if (!StringUtils.hasText(key)) {
-            RMap<K, ProcessingTaskWrapper<V>> map = getRedisMap();
+            RMap<K, ProcessingTaskWrapper<V>> map = getRedisProcessingMap();
             var wrapper = map.get(key);
             if (wrapper != null && poolUid.equals(wrapper.getPoolProcessIt())) {
                 cancelInLocal(key);
@@ -126,7 +162,42 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public int size() {
-        return getRedisMap().size();
+        return getRedisProcessingMap().size();
+    }
+
+    /**
+     * (In distributed mode), if your task is processed by a worker node, and that node crashes,
+     * we shall be able to restore it and put it back to todo list
+     * @param key task key
+     * @param consumer consumer to rescue the task
+     * @return success or not
+     */
+    @Override
+    public boolean tryRestoreCrashedProcessingTask(K key, Consumer<V> consumer) {
+       if (key == null || consumer == null) {
+           return false;
+       }
+       var crashSafe = getRedisCrashSafeMap();
+       V task= crashSafe.get(key);
+       if (task != null && task.getRetryChances() > 0) {
+           log.debug("Task {} is restored", key);
+           task.setRetryChances(task.getRetryChances() - 1);
+           SafeRunner.run(task::onRollbackBeforeRetry);
+           consumer.accept(task);
+           crashSafe.remove(key);
+           return true;
+       }
+        return false;
+    }
+
+    /**
+     * close the processingTasks collection if necessary
+     */
+    @Override
+    public void close() {
+        if (aliveFlag != null) {
+            aliveFlag.unlock();
+        }
     }
 
     private void cancelInLocal(String keyToCancel) {
@@ -139,7 +210,15 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         }
     }
 
-    private RMap<K, ProcessingTaskWrapper<V>> getRedisMap() {
+    private RMap<K, ProcessingTaskWrapper<V>> getRedisProcessingMap() {
         return redisson.getMap(prefix + PROCESSING_LIST);
+    }
+
+    private RMap<K, V> getRedisCrashSafeMap() {
+        return redisson.getMap(prefix + PROCESSING_LIST_CRASH_SAFE);
+    }
+
+    private RLock getAliveFlagForPool(String poolUid) {
+        return redisson.getLock(prefix + ALIVE_FLAG + poolUid);
     }
 }

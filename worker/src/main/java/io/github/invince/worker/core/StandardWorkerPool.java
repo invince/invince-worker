@@ -188,6 +188,18 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         }
     }
 
+    /**
+     * (In distributed mode), if your task is processed by a worker node, and that node crashes,
+     * we shall be able to restore it and put it back to todo list
+     * @param key task key
+     * @return success or not
+     */
+    @Override
+    public boolean tryRestoreCrashedProcessingTask(String key) {
+        return processingTasks != null && toDo != null
+                && processingTasks.tryRestoreCrashedProcessingTask(key, toDo::add);
+    }
+
     private void newWorker() {
         StandardWorker<T> worker = new StandardWorker<>(completableTaskFutureService, toDo, processingTasks);
         toDo.startListening();
