@@ -119,8 +119,8 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         }
         task.onEnqueueSafe();
 
-        if(config.getMaxRetryTimes() > 0) {
-            task.setRetryChances(config.getMaxRetryTimes());
+        if(config.getMaxRetryAttempts() > 0) {
+            task.setRetryChances(config.getMaxRetryAttempts());
         }
 
         if(!this.toDo.add(task)){
