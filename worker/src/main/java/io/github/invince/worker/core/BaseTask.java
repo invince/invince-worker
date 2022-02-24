@@ -6,6 +6,7 @@ import io.github.invince.exception.WorkerError;
 import io.github.invince.exception.WorkerException;
 import io.github.invince.util.SafeRunner;
 import io.github.invince.worker.core.future.CompletableTaskFuture;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,6 +30,8 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
     private final AtomicBoolean toBeCancelled = new AtomicBoolean(false);
     protected final AtomicBoolean toContinue = new AtomicBoolean(true) ;
     private final String defaultKey;
+
+    @Getter
     @Setter
     private int retryChances = 0;
 
@@ -58,7 +61,7 @@ public abstract class BaseTask<T> implements ITaskIdentify, Serializable {
     /**
      * Be called when a retryable (the retry chance still greater than 1) task fails, and before it re-start
      */
-    protected void onRollbackBeforeRetry() {}
+    public void onRollbackBeforeRetry() {}
 
 
     /**

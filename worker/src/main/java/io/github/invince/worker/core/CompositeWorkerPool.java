@@ -184,4 +184,20 @@ public class CompositeWorkerPool<T extends BaseTask> implements IWorkerPool<T> {
             defaultPool.cancelTask(key);
         }
     }
+
+    /**
+     * (In distributed mode), if your task is processed by a worker node, and that node crashes,
+     * we shall be able to restore it and put it back to todo list
+     * @param key task key
+     * @return success or not
+     */
+    @Override
+    public boolean tryRestoreCrashedProcessingTask(String key) {
+        if (!isEmpty(pools)) {
+            return pools.stream().map(WorkerPoolPredicate::getWorkerPool)
+                    .anyMatch(one -> one.tryRestoreCrashedProcessingTask(key)) // task should be only in one pool, so only one can rescue it
+                    || defaultPool.tryRestoreCrashedProcessingTask(key);
+        }
+        return defaultPool.tryRestoreCrashedProcessingTask(key);
+    }
 }

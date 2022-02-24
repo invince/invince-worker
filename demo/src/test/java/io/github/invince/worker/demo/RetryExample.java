@@ -31,7 +31,7 @@ class RetryExample {
         SyncWithResultWorkerPool<Plus1Task, String ,Integer, Integer> pool =
                 new SyncWithResultWorkerPool<>(new WorkerPoolSetup()
                         .setMaxNbWorker(3)
-                        .setMaxRetryTimes(5), sumFunction);
+                        .setMaxRetryAttempts(5), sumFunction);
 
         pool.enqueueAll("abc", List.of(new RetryTask(1), new RetryTask(2), new Plus1Task(3)));
         pool.enqueueAll("def", List.of(new Plus1Task(8), new RetryTask(2), new Plus1Task(3)));
@@ -53,7 +53,7 @@ class RetryExample {
         SyncWithResultWorkerPool<Plus1Task, String ,Integer, Integer> pool =
                 new SyncWithResultWorkerPool<>(new WorkerPoolSetup()
                         .setMaxNbWorker(3)
-                        .setMaxRetryTimes(1), sumFunction); // first time + 1 retry = 2 times
+                        .setMaxRetryAttempts(1), sumFunction); // first time + 1 retry = 2 times
 
         pool.enqueueAll("abc", List.of(new RetryTask(1)));
 

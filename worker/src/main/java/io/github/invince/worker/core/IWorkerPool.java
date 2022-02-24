@@ -77,7 +77,16 @@ public interface IWorkerPool<T extends BaseTask> {
 
     /**
      * cancel a task (no matter it's in todo list or processing list)
-     * @param key task list
+     * @param key task key
      */
     void cancelTask(String key);
+
+
+    /**
+     * (In distributed mode), if your task is processed by a worker node, and that node crashes,
+     * we shall be able to restore it and put it back to todo list
+     * @param key task key
+     * @return success or not
+     */
+    boolean tryRestoreCrashedProcessingTask(String key);
 }
