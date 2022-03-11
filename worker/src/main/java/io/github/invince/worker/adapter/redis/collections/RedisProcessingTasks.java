@@ -12,6 +12,9 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -32,7 +35,8 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
 
     private final String prefix;
     private final String poolUid;
-    private final RLock aliveFlag; // RLock has a watchDog check, if app crashes, the lock will be released in next check
+    private final ScheduledExecutorService aliveFlagChecker = Executors.newScheduledThreadPool(1);
+
 
     private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
 
@@ -63,10 +67,17 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
             }
         });
 
-        aliveFlag = getAliveFlagForPool(poolUid);
-        aliveFlag.lock();
+        aliveFlagChecker.scheduleAtFixedRate(this::checkAliveFlag, 0, 5, TimeUnit.MINUTES);
     }
 
+
+    private void checkAliveFlag() {
+        RLock selfAliveFlag = getAliveFlagForPool(poolUid);
+        if ( selfAliveFlag != null && !selfAliveFlag.isLocked()) {
+            selfAliveFlag.lock();
+            log.debug("Pool {} alive flag has been set", poolUid);
+        }
+    }
 
     /**
      * Put a task into processingTasks.
@@ -203,6 +214,8 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public void close() {
+        SafeRunner.run(aliveFlagChecker::shutdown);
+        var aliveFlag = getAliveFlagForPool(poolUid);
         if (aliveFlag != null) {
             aliveFlag.unlock();
         }
