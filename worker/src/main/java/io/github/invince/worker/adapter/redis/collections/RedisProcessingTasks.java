@@ -12,6 +12,9 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.springframework.util.StringUtils;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -32,16 +35,16 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
 
     private final String prefix;
     private final String poolUid;
-    private final RLock aliveFlag; // RLock has a watchDog check, if app crashes, the lock will be released in next check
+    private final ScheduledExecutorService aliveFlagChecker = Executors.newScheduledThreadPool(1);
+
 
     private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
 
 
     /**
-     *
      * @param redisson redisson
-     * @param prefix the queue prefix
-     * @param poolUid the uid of the pool, in distributed mode, pool on each node should have different poolUid
+     * @param prefix   the queue prefix
+     * @param poolUid  the uid of the pool, in distributed mode, pool on each node should have different poolUid
      */
     public RedisProcessingTasks(RedissonClient redisson, String prefix, String poolUid) {
         this.redisson = redisson;
@@ -53,7 +56,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         // means we can do task.cancel on one node, then redis publish that event and every node
         // check if the task is processing on itself, if yes, cancel it
         cancelProcessingTopic.addListener(String.class, (channel, keyToCancel) -> {
-            if(keyToCancel == null) {
+            if (keyToCancel == null) {
                 log.warn("Null key to cancel");
                 return;
             }
@@ -64,17 +67,23 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
             }
         });
 
-        aliveFlag = getAliveFlagForPool(poolUid);
-        aliveFlag.lock();
+        aliveFlagChecker.scheduleAtFixedRate(this::checkAliveFlag, 0, 5, TimeUnit.MINUTES);
     }
 
 
+    private void checkAliveFlag() {
+        RLock selfAliveFlag = getAliveFlagForPool(poolUid);
+        if ( selfAliveFlag != null && !selfAliveFlag.isLocked()) {
+            selfAliveFlag.lock();
+            log.debug("Pool {} alive flag has been set", poolUid);
+        }
+    }
 
     /**
      * Put a task into processingTasks.
      * We will put the task both on redis and tasksProcessingOnThisInstance
      *
-     * @param key task key
+     * @param key  task key
      * @param task task
      * @return the added task
      */
@@ -102,17 +111,25 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     @Override
     public V remove(Object key) {
         // remove it from redis processing list
+        V rt = null;
         var wrapper = getRedisProcessingMap().remove(key);
+        if (wrapper != null) {
+            rt = wrapper.getTask();
+        }
         // remove it from redis crash safe list
-        getRedisCrashSafeMap().remove(key);
+        var crashSafeRemoved = getRedisCrashSafeMap().remove(key);
+        if (rt == null) {
+            rt = crashSafeRemoved;
+        }
         // remove it from local copy
         tasksProcessingOnThisInstance.remove(key);
         log.debug("Task {} removed from redis processing map", key);
-        return wrapper.getTask();
+        return rt;
     }
 
     /**
      * Check if task key exist in processing list
+     *
      * @param key task key
      * @return if task key exist in processing list
      */
@@ -140,6 +157,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     /**
      * Cancel a task via task key.
      * If task is processing on same node, cancel it, otherwise broadcast event in cancelProcessingTopic
+     *
      * @param key task key
      */
     @Override
@@ -168,25 +186,26 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
     /**
      * (In distributed mode), if your task is processed by a worker node, and that node crashes,
      * we shall be able to restore it and put it back to todo list
-     * @param key task key
+     *
+     * @param key      task key
      * @param consumer consumer to rescue the task
      * @return success or not
      */
     @Override
     public boolean tryRestoreCrashedProcessingTask(K key, Consumer<V> consumer) {
-       if (key == null || consumer == null) {
-           return false;
-       }
-       var crashSafe = getRedisCrashSafeMap();
-       V task= crashSafe.get(key);
-       if (task != null && task.getRetryChances() > 0) {
-           log.debug("Task {} is restored", key);
-           task.setRetryChances(task.getRetryChances() - 1);
-           SafeRunner.run(task::onRollbackBeforeRetry);
-           consumer.accept(task);
-           crashSafe.remove(key);
-           return true;
-       }
+        if (key == null || consumer == null) {
+            return false;
+        }
+        var crashSafe = getRedisCrashSafeMap();
+        V task = crashSafe.get(key);
+        if (task != null && task.getRetryChances() > 0) {
+            log.debug("Task {} is restored", key);
+            task.setRetryChances(task.getRetryChances() - 1);
+            SafeRunner.run(task::onRollbackBeforeRetry);
+            consumer.accept(task);
+            crashSafe.remove(key);
+            return true;
+        }
         return false;
     }
 
@@ -195,6 +214,8 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public void close() {
+        SafeRunner.run(aliveFlagChecker::shutdown);
+        var aliveFlag = getAliveFlagForPool(poolUid);
         if (aliveFlag != null) {
             aliveFlag.unlock();
         }
@@ -202,7 +223,7 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
 
     private void cancelInLocal(String keyToCancel) {
         V task = tasksProcessingOnThisInstance.get(keyToCancel);
-        if(task != null) {
+        if (task != null) {
             log.debug("Task {} is processing on this node, we'll cancel it", keyToCancel);
             SafeRunner.run(task::cancelProcessing);
         } else {
