@@ -5,7 +5,7 @@
 This tool can help you create a blocking queue style workerPool.
 - The workerPool manage a list of worker to take task and process it from the blocking queue (toDo list)
 - you can enqueue task into the pool and worker will process
-Why do this?  
+## Why do this?  
 - in that way, you can control the nb of parallel task (for ex, if you call external service, but that service has limitation)
 - you can even distribute your task in a shared queue (we provide redis version, but you can implement your own), so the replica/other app can join and process together
 
