@@ -1,6 +1,7 @@
 package io.github.invince.worker.core.helper;
 
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import io.github.invince.worker.core.collections.ITaskGroups;
 import io.github.invince.worker.core.collections.IToDoTasks;
@@ -18,27 +19,27 @@ import io.github.invince.worker.core.future.ICompletableTaskFutureService;
 public interface IWorkerPoolHelper {
 
     /**
-     * @param workerPoolName workerPoolName
+     * @param setup the WorkerPoolSetup
+     * @param poolUid poolUid
      * @return create a blocking queue type tado list
      */
-    IToDoTasks newToDoTasks(String workerPoolName);
+    IToDoTasks newToDoTasks(WorkerPoolSetup setup, String poolUid);
 
     /**
-     *
-     * @param workerPoolName workerPoolName
+     * @param setup the WorkerPoolSetup
      * @param poolUid in distributed mode, you can know who (which workerpool) takes the task
      * @param <T> task type
      * @return Create a new processing task list
      */
-    <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String workerPoolName, String poolUid);
+    <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, String poolUid);
 
     /**
-     * @param workerPoolName workerPoolName
+     * @param setup the WorkerPoolSetup
      * @param <GroupBy> group key type
      * @param <SingleResult> singleResult of a single task
      * @return a map of group and all tasks in same group
      */
-    <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(String workerPoolName) ;
+    <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup) ;
 
     /**
      * @return ICompletableTaskFutureService to help generate CompletableTaskFuture from a baseTask

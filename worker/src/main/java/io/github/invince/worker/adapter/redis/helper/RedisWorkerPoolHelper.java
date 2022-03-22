@@ -6,6 +6,7 @@ import io.github.invince.worker.adapter.redis.collections.RedisTodoTasks;
 import io.github.invince.worker.adapter.redis.future.RedisCompletableTaskFutureService;
 import io.github.invince.worker.adapter.redis.future.RedissonCompletableTaskFutureHelper;
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import io.github.invince.worker.core.collections.ITaskGroups;
 import io.github.invince.worker.core.collections.IToDoTasks;
@@ -18,6 +19,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 /**
  * Redis version of IWorkerPoolHelper
  */
@@ -28,6 +32,7 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
 
     private final RedissonClient client;
     private final ICompletableTaskFutureService completableTaskFutureService;
+    private final String defaultName = UUID.randomUUID().toString();
 
     @Autowired
     public RedisWorkerPoolHelper(RedissonClient client, RedissonCompletableTaskFutureHelper helper) {
@@ -37,36 +42,40 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
 
     /**
      * Create a new RedisTodoTasks
-     * @param workerPoolName name to identify this todo list is for which workerPool
+     *
+     * @param setup WorkerPoolSetup
+     * @param poolUid the poolUid of the workerPool, this will be used to identify the task is processing on which pool/node (NOTE: every node shall have its own pool, and every pool has different poolUid)
      * @return RedisTodoTasks
      */
     @Override
-    public IToDoTasks newToDoTasks(String workerPoolName) {
-        return new RedisTodoTasks(client, workerPoolName);
+    public IToDoTasks newToDoTasks(WorkerPoolSetup setup, String poolUid) {
+        return new RedisTodoTasks(client, poolUid);
     }
 
     /**
      * Create a new RedisProcessingTasks
-     * @param workerPoolName name to identify this todo list is for which workerPool
+     *
+     * @param setup WorkerPoolSetup
      * @param poolUid the poolUid of the workerPool, this will be used to identify the task is processing on which pool/node (NOTE: every node shall have its own pool, and every pool has different poolUid)
      * @param <T> the Task Type
      * @return RedisProcessingTasks
      */
     @Override
-    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String workerPoolName, String poolUid) {
-        return new RedisProcessingTasks<>(client, workerPoolName, poolUid);
+    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, String poolUid) {
+        return new RedisProcessingTasks<>(client, setup, poolUid);
     }
 
     /**
      * Create a new RedisTaskGroups, to map which task is in which group
-     * @param workerPoolName not useful in local mode
+     *
+     * @param setup WorkerPoolSetup
      * @param <GroupBy> group key type
      * @param <SingleResult> singleResult of a single task
      * @return RedisTaskGroups
      */
     @Override
-    public <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(String workerPoolName) {
-        return new RedisTaskGroups<>(client, completableTaskFutureService, workerPoolName);
+    public <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup) {
+        return new RedisTaskGroups<>(client, completableTaskFutureService, getName(setup));
     }
 
 
@@ -77,5 +86,9 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
     @Override
     public ICompletableTaskFutureService getCompletableTaskFutureService() {
         return completableTaskFutureService;
+    }
+
+    private String getName(WorkerPoolSetup setup) {
+        return Optional.ofNullable(setup).map(WorkerPoolSetup::getQueueName).orElse(defaultName);
     }
 }

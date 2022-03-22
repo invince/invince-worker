@@ -28,6 +28,12 @@ public class WorkerPoolSetup {
 
     private int maxRetryAttempts = 0;
 
+    private int aliveCheckInterval = 30;
+
     // for each mode, you need implements and set your helper (to tell workerPool how to create toDo, processing list, taskGroup and how to bind a task to a CompletableTaskFuture)
     private IWorkerPoolHelper helper = new DefaultWorkerPoolHelper();
+
+    public int getAliveCheckInterval() {
+        return aliveCheckInterval <=0 ? 30 : aliveCheckInterval;
+    }
 }
