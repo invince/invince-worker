@@ -18,11 +18,11 @@ Why do this?
   <version>1.0.0</version>
 </dependency>
 ```
-- this project is spring based, include **WorkerPoolConfiguration** configuration.
+- this project is spring based, so you need include **WorkerPoolConfiguration** configuration.
 ```java
 @Import(WorkerPoolConfiguration.class)
 ```
-- first decide which kind of workerPool (cf [below](#different-type-of-workerpool))
+- first decide which kind of workerPool to use (cf [below](#different-type-of-workerpool))
 - Then create the Task class based the parent task type of that workerPool type. for ex: for SyncWithResultWorkerPool, you need create a Task extends AbstractStandardTaskWithResult
   * NOTE: if you want to use distributed mode, your task class should be serializable, for ex: if you use spring, you cannot inject spring bean/service in it
   * in that case, to help you, we created a **SpringContextHolder** class, you can do SpringContextHolder.getInstance(xxxx)
@@ -75,7 +75,7 @@ Example of usage:
 
 ### Redis Mode
 - we provide redis mode (using [redisson](https://github.com/redisson/redisson)) to share the todo blocking queue
-- active **redis-workerpool** spring profile
+- activate **redis-workerpool** spring profile
 - NOTE: if you launch your app with replica, these replicas will connect together
 - if you want more advanced setup, you can setup for ex a front node to enqueue task, and other working node to handle them
    * NOTE: it can be achieved even if the front and worker are the same app, for front node, just set the nbWorker to 0, and for working node disable the **lazyCreation**
