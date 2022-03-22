@@ -5,6 +5,7 @@ import io.github.invince.worker.adapter.local.collections.DefaultTaskGroups;
 import io.github.invince.worker.adapter.local.collections.DefaultToDoTasks;
 import io.github.invince.worker.adapter.local.future.DefaultCompletableTaskFutureService;
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import io.github.invince.worker.core.collections.ITaskGroups;
 import io.github.invince.worker.core.collections.IToDoTasks;
@@ -22,35 +23,38 @@ public class DefaultWorkerPoolHelper implements IWorkerPoolHelper {
 
     /**
      * Create a new DefaultToDoTasks
-     * @param workerPoolName not useful in local mode
+     *
+     * @param setup NA in local mode
+     * @param poolUid NA in local mode
      * @return DefaultToDoTasks
      */
     @Override
-    public IToDoTasks newToDoTasks(String workerPoolName) {
+    public IToDoTasks newToDoTasks(WorkerPoolSetup setup, String poolUid) {
         return new DefaultToDoTasks();
     }
 
     /**
      * Create a new DefaultProcessingTasks
-     * @param workerPoolName NA in local mode
+     * @param setup NA in local mode
      * @param poolUid NA in local mode
      * @param <T> the Task Type
      * @return DefaultProcessingTasks
      */
     @Override
-    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(String workerPoolName, String poolUid) {
+    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, String poolUid) {
         return new DefaultProcessingTasks<>();
     }
 
     /**
      * Create a new DefaultTaskGroups, to map which task is in which group
-     * @param workerPoolName NA in local mode
+     * 
+     * @param setup NA in local mode
      * @param <GroupBy> group key type
      * @param <SingleResult> singleResult of a single task
      * @return DefaultTaskGroups
      */
     @Override
-    public <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(String workerPoolName) {
+    public <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup) {
         return new DefaultTaskGroups<>();
     }
 

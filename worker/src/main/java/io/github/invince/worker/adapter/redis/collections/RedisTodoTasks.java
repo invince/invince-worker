@@ -63,7 +63,15 @@ public class RedisTodoTasks implements IToDoTasks {
      */
     @Override
     public boolean exist(String key) {
-        return !StringUtils.hasText(key) && getRedisBQ().stream().anyMatch(one -> key.equals(one.getKey()));
+        if (StringUtils.hasText(key)) {
+            return false;
+        }
+        RList<String> todoKeyCopy = redisson.getList(prefix + TODO_LIST_KEY);
+        if (todoKeyCopy != null && todoKeyCopy.contains(key)) {
+            return true;
+        }
+        log.trace("Task {} not found in todo list", key);
+        return false;
     }
 
     /**
@@ -93,6 +101,14 @@ public class RedisTodoTasks implements IToDoTasks {
             todoKeyCopy.add(task.getKey());
 
             log.debug("Task {} add into redis todo blocking queue", task.getKey());
+
+            // we'll wait extra time to let redis sync better
+            try {
+                Thread.sleep(2 * 1000L);
+            } catch (InterruptedException e) {
+                log.error(e.getMessage(), e);
+                Thread.currentThread().interrupt();
+            }
             return rt;
         }
     }

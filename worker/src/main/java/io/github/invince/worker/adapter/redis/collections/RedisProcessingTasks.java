@@ -4,6 +4,7 @@ import io.github.invince.util.SafeRunner;
 import io.github.invince.worker.adapter.local.collections.DefaultProcessingTasks;
 import io.github.invince.worker.adapter.redis.collections.model.ProcessingTaskWrapper;
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -35,21 +36,22 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
 
     private final String prefix;
     private final String poolUid;
-    private final ScheduledExecutorService aliveFlagChecker = Executors.newScheduledThreadPool(1);
+    private final WorkerPoolSetup setup;
 
+    private final ScheduledExecutorService aliveFlagChecker = Executors.newScheduledThreadPool(1);
 
     private final DefaultProcessingTasks<K, V> tasksProcessingOnThisInstance = new DefaultProcessingTasks<>();
 
-
     /**
      * @param redisson redisson
-     * @param prefix   the queue prefix
+     * @param setup  WorkerPoolSetup
      * @param poolUid  the uid of the pool, in distributed mode, pool on each node should have different poolUid
      */
-    public RedisProcessingTasks(RedissonClient redisson, String prefix, String poolUid) {
+    public RedisProcessingTasks(RedissonClient redisson, WorkerPoolSetup setup, String poolUid) {
         this.redisson = redisson;
-        this.prefix = prefix;
+        this.prefix = setup.getQueueName();
         this.poolUid = poolUid;
+        this.setup = setup;
 
         RTopic cancelProcessingTopic = redisson.getTopic(prefix + CANCEL_PROCESSING_TOPIC);
         // every node should listen to cancelProcessing topic.
@@ -67,7 +69,8 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
             }
         });
 
-        aliveFlagChecker.scheduleAtFixedRate(this::checkAliveFlag, 0, 5, TimeUnit.MINUTES);
+        aliveFlagChecker.scheduleAtFixedRate(this::checkAliveFlag,
+                0, setup.getAliveCheckInterval(), TimeUnit.SECONDS);
     }
 
 
@@ -89,6 +92,10 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public V put(K key, V task) {
+
+        // Each time we put task into processing list, we check again the alive flag
+        SafeRunner.run(this::checkAliveFlag);
+
         // put it into redis processing list
         getRedisProcessingMap().put(key, new ProcessingTaskWrapper<>(task, poolUid));
         // put it into redis crash safe list
@@ -97,6 +104,14 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
         // put it into local copy
         tasksProcessingOnThisInstance.put(key, task);
         log.debug("Task {} move to redis processing map", task.getKey());
+
+        // we'll wait extra time to let redis sync better
+        try {
+            Thread.sleep(2 * 1000L);
+        } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt();
+        }
         return task;
     }
 
@@ -135,6 +150,11 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
      */
     @Override
     public boolean exist(K key) {
+        return exist(key, true);
+    }
+
+
+    private boolean exist(K key, boolean retry) {
         var processingList = getRedisProcessingMap();
         var taskWrapper = processingList.get(key);
         if (taskWrapper != null) {
@@ -144,13 +164,26 @@ public class RedisProcessingTasks<K, V extends BaseTask> implements IProcessingT
             } else {
                 // the pool process that task is dead
                 // remove it from redis processing list
-                getRedisProcessingMap().remove(key);
-                // remove it from local copy
-                tasksProcessingOnThisInstance.remove(key);
-                return false;
+                log.debug("The alive flag for pool ({}) is missing, we'll retry a exist check in {}s", taskWrapper.getPoolProcessIt(), 2 * setup.getAliveCheckInterval());
+                if(retry) {
+                    try {
+                        Thread.sleep(2 * setup.getAliveCheckInterval() * 1000L);
+                    } catch (InterruptedException e) {
+                        log.error(e.getMessage(), e);
+                        Thread.currentThread().interrupt();
+                    }
+                    return exist(key, false);
+                } else {
+                    log.debug("The pool ({}) process this task is dead, we'll remove the task from processing list", taskWrapper.getPoolProcessIt());
+                    getRedisProcessingMap().remove(key);
+                    // remove it from local copy
+                    tasksProcessingOnThisInstance.remove(key);
+                    return false;
+                }
             }
         }
 
+        log.trace("Task {} not found in processing list", key);
         return false;
     }
 

@@ -45,13 +45,13 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
         try {
             BaseTask task;
             do {
-                task = toDo.take();
+                task = toDo.take(); // the task is taken from todo list, but the key is still in todoKeyCopy list
                 if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
                     var taskFuture = completableTaskFutureService.getOrWrap(task);
                     try {
                         log.debug("{} starts at {}, stills has {} tasks in todo list", task.getUniqueKey(), ZonedDateTime.now(), toDo.size());
                         processing.put(task.getKey(), (T) task);
-                        toDo.movedToProcessing(task.getKey());
+                        toDo.movedToProcessing(task.getKey()); // now the key is removed from todoKeyCopy list
                         if (task.isToBeCancelled()) {
                             log.debug("{} has already been cancelled, we won't process it, stills has {} tasks in processing",
                                     task.getUniqueKey(), processing.size());

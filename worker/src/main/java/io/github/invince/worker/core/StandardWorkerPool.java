@@ -62,8 +62,8 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private void init() {
         IWorkerPoolHelper ioc = config.getHelper();
-        this.toDo = ioc.newToDoTasks(config.getQueueName());
-        this.processingTasks = ioc.newProcessingTasks(config.getQueueName(), poolUid);
+        this.toDo = ioc.newToDoTasks(config, poolUid);
+        this.processingTasks = ioc.newProcessingTasks(config, poolUid);
         this.completableTaskFutureService = ioc.getCompletableTaskFutureService();
         if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
             for (int i = 0; i < config.getMaxNbWorker(); i++) {
@@ -196,6 +196,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
      */
     @Override
     public boolean tryRestoreCrashedProcessingTask(String key) {
+        log.debug("Rescuing {}", key);
         return processingTasks != null && toDo != null
                 && processingTasks.tryRestoreCrashedProcessingTask(key, toDo::add);
     }
