@@ -2,11 +2,8 @@ package io.github.invince.worker.core;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StandardWorkerPoolTest {
 
@@ -19,20 +16,21 @@ class StandardWorkerPoolTest {
     void test() {
         StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3));
 
-        pool.enqueue(new MyTask());
-        List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
-        assertEquals(1, workers.size());
+        var workerController = pool.workerController;
 
         pool.enqueue(new MyTask());
-        assertEquals(2, workers.size());
+        assertEquals(1, workerController.getPermanentWorkers().size());
 
         pool.enqueue(new MyTask());
-        assertEquals(3, workers.size());
+        assertEquals(2, workerController.getPermanentWorkers().size());
 
         pool.enqueue(new MyTask());
-        assertEquals(3, workers.size());
+        assertEquals(3, workerController.getPermanentWorkers().size());
 
-        pool.shutdown(false);
+        pool.enqueue(new MyTask());
+        assertEquals(3, workerController.getPermanentWorkers().size());
+
+        pool.shutdown(true);
 
         assertEquals(4, MyTask.called.get());
     }
@@ -41,9 +39,8 @@ class StandardWorkerPoolTest {
     @Test
     void testNotLazyCreation() {
         StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(3).setLazyCreation(false));
-        List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
-
-        assertEquals(3, workers.size());
+        var workerController = pool.workerController;
+        assertEquals(3, workerController.getPermanentWorkers().size());
     }
 
     @Test
@@ -51,13 +48,9 @@ class StandardWorkerPoolTest {
         StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setMaxNbWorker(0));
 
         pool.enqueue(new MyTask());
-        List workers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
-
-        assertEquals(0, workers.size());
-
-        List tempWorkers = (List) ReflectionTestUtils.getField(pool, "tempWorkers");
-
-        assertEquals(0, tempWorkers.size());
+        var workerController = pool.workerController;
+        assertEquals(0, workerController.getPermanentWorkers().size());
+        assertEquals(0, workerController.getTempWorkers().size());
     }
 
     @Test
@@ -65,24 +58,23 @@ class StandardWorkerPoolTest {
         StandardWorkerPool<MyTask> pool = new StandardWorkerPool<>(new WorkerPoolSetup().setUnlimited(true));
 
         pool.enqueue(new MyTask());
-        List workers = (List) ReflectionTestUtils.getField(pool, "tempWorkers");
-        List permanentWorkers = (List) ReflectionTestUtils.getField(pool, "permanentWorkers");
-        assertEquals(1, workers.size());
-        assertEquals(0, permanentWorkers.size());
+        var workerController = pool.workerController;
+        assertEquals(1, workerController.getTempWorkers().size());
+        assertEquals(0, workerController.getPermanentWorkers().size());
 
         pool.enqueue(new MyTask());
-        assertEquals(2, workers.size());
-        assertEquals(0, permanentWorkers.size());
+        assertEquals(2, workerController.getTempWorkers().size());
+        assertEquals(0, workerController.getPermanentWorkers().size());
 
         pool.enqueue(new MyTask());
-        assertEquals(3, workers.size());
-        assertEquals(0, permanentWorkers.size());
+        assertEquals(3, workerController.getTempWorkers().size());
+        assertEquals(0, workerController.getPermanentWorkers().size());
 
         pool.enqueue(new MyTask());
-        assertEquals(4, workers.size());
-        assertEquals(0, permanentWorkers.size());
+        assertEquals(4, workerController.getTempWorkers().size());
+        assertEquals(0, workerController.getPermanentWorkers().size());
 
-        pool.shutdown(false);
+        pool.shutdown(true);
 
         assertEquals(4, MyTask.called.get());
     }
