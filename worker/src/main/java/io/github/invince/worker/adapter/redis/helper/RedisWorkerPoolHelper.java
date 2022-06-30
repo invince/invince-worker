@@ -6,6 +6,7 @@ import io.github.invince.worker.adapter.redis.collections.RedisTodoTasks;
 import io.github.invince.worker.adapter.redis.future.RedisCompletableTaskFutureService;
 import io.github.invince.worker.adapter.redis.future.RedissonCompletableTaskFutureHelper;
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerController;
 import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import io.github.invince.worker.core.collections.ITaskGroups;
@@ -44,24 +45,26 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
      * Create a new RedisTodoTasks
      *
      * @param setup WorkerPoolSetup
+     * @param workerController workerController
      * @param poolUid the poolUid of the workerPool, this will be used to identify the task is processing on which pool/node (NOTE: every node shall have its own pool, and every pool has different poolUid)
      * @return RedisTodoTasks
      */
     @Override
-    public IToDoTasks newToDoTasks(WorkerPoolSetup setup, String poolUid) {
-        return new RedisTodoTasks(client, poolUid);
+    public <T extends BaseTask> IToDoTasks newToDoTasks(WorkerPoolSetup setup, WorkerController<T> workerController, String poolUid) {
+        return new RedisTodoTasks(client, workerController, poolUid);
     }
 
     /**
      * Create a new RedisProcessingTasks
      *
      * @param setup WorkerPoolSetup
+     * @param workerController workerController
      * @param poolUid the poolUid of the workerPool, this will be used to identify the task is processing on which pool/node (NOTE: every node shall have its own pool, and every pool has different poolUid)
      * @param <T> the Task Type
      * @return RedisProcessingTasks
      */
     @Override
-    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, String poolUid) {
+    public <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, WorkerController<T> workerController, String poolUid) {
         return new RedisProcessingTasks<>(client, setup, poolUid);
     }
 
@@ -69,12 +72,13 @@ public class RedisWorkerPoolHelper implements IWorkerPoolHelper {
      * Create a new RedisTaskGroups, to map which task is in which group
      *
      * @param setup WorkerPoolSetup
+     * @param workerController workerController
      * @param <GroupBy> group key type
      * @param <SingleResult> singleResult of a single task
      * @return RedisTaskGroups
      */
     @Override
-    public <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup) {
+    public <T extends BaseTask, GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup, WorkerController<T> workerController) {
         return new RedisTaskGroups<>(client, completableTaskFutureService, getName(setup));
     }
 

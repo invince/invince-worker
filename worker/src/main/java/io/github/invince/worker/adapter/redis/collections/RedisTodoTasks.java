@@ -3,6 +3,7 @@ package io.github.invince.worker.adapter.redis.collections;
 import io.github.invince.util.SafeRunner;
 import io.github.invince.worker.core.BaseTask;
 import io.github.invince.worker.core.FinishTask;
+import io.github.invince.worker.core.WorkerController;
 import io.github.invince.worker.core.collections.IToDoTasks;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBlockingQueue;
@@ -16,7 +17,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class RedisTodoTasks implements IToDoTasks {
+public class RedisTodoTasks<T extends BaseTask> implements IToDoTasks {
 
     private static final String TODO_LIST = "$TODO_LIST$";
     private static final String TODO_LIST_KEY = "$TODO_LIST_KEY$";
@@ -24,6 +25,8 @@ public class RedisTodoTasks implements IToDoTasks {
     private final RedissonClient redisson;
 
     private final String prefix;
+
+    private final WorkerController<T> workerController;
 
     /**
      * 1. to reduce the usage of redis RBlockingQueue, we create a thread take element from that queue and put into this local BlockingQueue which be used by all workers
@@ -34,9 +37,10 @@ public class RedisTodoTasks implements IToDoTasks {
     private final AtomicBoolean listenRunning = new AtomicBoolean(false);
     private ExecutorService listenerExecutor;
 
-    public RedisTodoTasks(RedissonClient redisson, String prefix) {
+    public RedisTodoTasks(RedissonClient redisson, WorkerController<T> workerController, String prefix) {
         this.redisson = redisson;
         this.prefix = prefix;
+        this.workerController = workerController;
     }
 
     /**
@@ -123,6 +127,17 @@ public class RedisTodoTasks implements IToDoTasks {
                     BaseTask task;
                     do {
                         try {
+                            if(!this.workerController.hasAvailableWorker()) {
+                                log.info("No more available worker, we'll wait 10s");
+                                // we'll wait extra time to let redis sync better
+                                try {
+                                    Thread.sleep(10 * 1000L);
+                                } catch (InterruptedException e) {
+                                    log.error(e.getMessage(), e);
+                                    Thread.currentThread().interrupt();
+                                }
+                                continue;
+                            }
                             task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
                             if (task != null) { // normally impossible null
                                 if (redisson.getList(prefix + KEYS_TO_CANCEL).contains(task.getKey())) {

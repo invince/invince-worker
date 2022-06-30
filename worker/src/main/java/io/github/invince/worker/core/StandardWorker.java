@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Standard worker, keep processing the task taken from todo list until receiving FinishTask
@@ -28,6 +29,8 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
 
     private int counter = 0;
 
+    private final AtomicBoolean busy = new AtomicBoolean(false);
+
     public StandardWorker(ICompletableTaskFutureService completableTaskFutureService, IToDoTasks toDo, IProcessingTasks<String, T> processing) {
         this.completableTaskFutureService = completableTaskFutureService;
         WorkerError.verify("Fail to init worker with null todo or null processing list")
@@ -36,6 +39,9 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
         this.processing = processing;
     }
 
+    public boolean isAvailable() {
+        return !busy.get();
+    }
 
     /**
      * keep processing the task taken from todo list until receiving FinishTask
@@ -47,6 +53,7 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
             do {
                 task = toDo.take(); // the task is taken from todo list, but the key is still in todoKeyCopy list
                 if (task != null && !(task instanceof FinishTask) && task.getKey() != null) {
+                    busy.set(true);
                     var taskFuture = completableTaskFutureService.getOrWrap(task);
                     try {
                         log.debug("{} starts at {}, stills has {} tasks in todo list", task.getUniqueKey(), ZonedDateTime.now(), toDo.size());
@@ -68,6 +75,8 @@ public class StandardWorker<T extends BaseTask> extends CompletableFuture<Void> 
                         }
                     } catch (Exception e) {
                         log.error(e.getMessage(), e);
+                    } finally {
+                        busy.set(false);
                     }
                 }
             } while (task != null && !(task instanceof FinishTask));

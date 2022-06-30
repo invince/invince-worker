@@ -1,6 +1,7 @@
 package io.github.invince.worker.core.helper;
 
 import io.github.invince.worker.core.BaseTask;
+import io.github.invince.worker.core.WorkerController;
 import io.github.invince.worker.core.WorkerPoolSetup;
 import io.github.invince.worker.core.collections.IProcessingTasks;
 import io.github.invince.worker.core.collections.ITaskGroups;
@@ -23,7 +24,7 @@ public interface IWorkerPoolHelper {
      * @param poolUid poolUid
      * @return create a blocking queue type tado list
      */
-    IToDoTasks newToDoTasks(WorkerPoolSetup setup, String poolUid);
+    <T extends BaseTask> IToDoTasks newToDoTasks(WorkerPoolSetup setup, WorkerController<T> workerController, String poolUid);
 
     /**
      * @param setup the WorkerPoolSetup
@@ -31,7 +32,7 @@ public interface IWorkerPoolHelper {
      * @param <T> task type
      * @return Create a new processing task list
      */
-    <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, String poolUid);
+    <T extends BaseTask> IProcessingTasks<String, T> newProcessingTasks(WorkerPoolSetup setup, WorkerController<T> workerController, String poolUid);
 
     /**
      * @param setup the WorkerPoolSetup
@@ -39,7 +40,7 @@ public interface IWorkerPoolHelper {
      * @param <SingleResult> singleResult of a single task
      * @return a map of group and all tasks in same group
      */
-    <GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup) ;
+    <T extends BaseTask, GroupBy, SingleResult> ITaskGroups<GroupBy, SingleResult> newTaskGroups(WorkerPoolSetup setup, WorkerController<T> workerController) ;
 
     /**
      * @return ICompletableTaskFutureService to help generate CompletableTaskFuture from a baseTask
