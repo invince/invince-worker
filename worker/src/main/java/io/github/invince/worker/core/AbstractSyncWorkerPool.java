@@ -31,7 +31,7 @@ class AbstractSyncWorkerPool<T extends BaseTask<SingleResult>, GroupByType, Sing
     @Override
     protected void beforeInit() {
         // init before newWorker
-        requestTaskMap = config.getHelper().newTaskGroups(config);
+        requestTaskMap = config.getHelper().newTaskGroups(config, workerController);
     }
 
     /**

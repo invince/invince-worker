@@ -30,14 +30,8 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
     protected IProcessingTasks<String, T> processingTasks;
     protected ICompletableTaskFutureService completableTaskFutureService;
 
-    private final List<StandardWorker<T>> permanentWorkers = new ArrayList<>();
-    private final List<OneshotWorker<T>> tempWorkers = new ArrayList<>();
 
-    private final AtomicInteger permanentWorkerLaunched = new AtomicInteger(0);
-    private final AtomicInteger tempWorkerLaunched = new AtomicInteger(0);
-
-    private final ThreadPoolExecutor executor;
-
+    protected final WorkerController<T> workerController;
     @Getter
     protected final WorkerPoolSetup config;
     protected final String poolUid;
@@ -46,15 +40,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
     public StandardWorkerPool(WorkerPoolSetup config) {
         poolUid = getName() + "-" + UUID.randomUUID();
         this.config = config;
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-                .setNameFormat(getClass().getSimpleName() + "-thread-%d").build();
-        if(config.isUnlimited()) {
-            this.executor = (ThreadPoolExecutor) Executors.newCachedThreadPool(namedThreadFactory);
-        } else if (config.getMaxNbWorker() > 0){
-            this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(config.getMaxNbWorker(), namedThreadFactory);
-        } else {
-            this.executor = null; // for a front node maybe
-        }
+        this.workerController = new WorkerController<>(config);
         beforeInit();
         init();
         afterInit();
@@ -62,12 +48,12 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
 
     private void init() {
         IWorkerPoolHelper ioc = config.getHelper();
-        this.toDo = ioc.newToDoTasks(config, poolUid);
-        this.processingTasks = ioc.newProcessingTasks(config, poolUid);
+        this.toDo = ioc.newToDoTasks(config, workerController, poolUid);
+        this.processingTasks = ioc.newProcessingTasks(config, workerController, poolUid);
         this.completableTaskFutureService = ioc.getCompletableTaskFutureService();
         if(!config.isLazyCreation() && config.getMaxNbWorker() > 0) {
             for (int i = 0; i < config.getMaxNbWorker(); i++) {
-                 newWorker();
+                 workerController.newPermanentWorker(completableTaskFutureService, toDo, processingTasks);
             }
         }
     }
@@ -96,7 +82,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
      */
     @Override
     public int getPermanentWorkerSize() {
-        return permanentWorkers.size();
+        return workerController.getPermanentWorkers().size();
     }
 
     /**
@@ -112,11 +98,7 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         if(task == null) {
             return null;
         }
-        if(config.isUnlimited()) {
-            newTempWorker();
-        } else if(permanentWorkerLaunched.get() < config.getMaxNbWorker()) {
-            newWorker();
-        }
+        this.workerController.createNewWorkerIfNecessary(completableTaskFutureService, toDo, processingTasks);
         task.onEnqueueSafe();
 
         if(config.getMaxRetryAttempts() > 0) {
@@ -126,12 +108,12 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
         if(!this.toDo.add(task)){
             log.error("Fail to add {} into to do list", task.getKey());
         }
-        if(tempWorkerLaunched.get() > 0) {
+        if(workerController.getTempWorkerLaunched().get() > 0) {
             log.debug("{}'s todo list has {} tasks. {} temp worker started",
-                    getClass().getSimpleName(), toDo.size(), tempWorkerLaunched.get());
+                    getClass().getSimpleName(), toDo.size(), workerController.getTempWorkerLaunched().get());
         } else {
             log.debug("{}'s todo list has {} tasks. {} permanent worker started",
-                    getClass().getSimpleName(), toDo.size(), permanentWorkerLaunched.get());
+                    getClass().getSimpleName(), toDo.size(), workerController.getPermanentWorkerLaunched().get());
         }
         return task;
     }
@@ -201,24 +183,6 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
                 && processingTasks.tryRestoreCrashedProcessingTask(key, toDo::add);
     }
 
-    private void newWorker() {
-        StandardWorker<T> worker = new StandardWorker<>(completableTaskFutureService, toDo, processingTasks);
-        toDo.startListening();
-        permanentWorkers.add(worker);
-        executor.execute(worker);
-        log.debug("{} new worker created", getClass().getSimpleName());
-        permanentWorkerLaunched.incrementAndGet();
-    }
-
-    private void newTempWorker() {
-        OneshotWorker<T> worker = new OneshotWorker<>(completableTaskFutureService, toDo, processingTasks);
-        toDo.startListening();
-        tempWorkers.add(worker);
-        executor.execute(worker);
-        log.debug("{} new temp worker created", getClass().getSimpleName());
-        tempWorkerLaunched.incrementAndGet();
-    }
-
     /**
      * shutdown the workpool.
      * - we will add enough FinishTask into todo list to ends all worker
@@ -229,26 +193,18 @@ public class StandardWorkerPool<T extends BaseTask> implements IWorkerPool<T>  {
     @Override
     public void shutdown(boolean await) {
         if(config.isUnlimited()) {
-            for (int i = 0; i < tempWorkers.size() * 2; i++) { // *2 to make sure
+            for (int i = 0; i < workerController.getTempWorkerLaunched().get() * 2; i++) { // *2 to make sure
                 toDo.add(new FinishTask());
-            }
-            if(await) {
-                CompletableFuture.allOf(tempWorkers.toArray(new OneshotWorker[0])).join();
             }
         } else {
-            for (int i = 0; i < permanentWorkers.size() * 2; i++) { // *2 to make sure
+            for (int i = 0; i < config.getMaxNbWorker() * 2; i++) { // *2 to make sure
                 toDo.add(new FinishTask());
             }
-            if(await) {
-                CompletableFuture.allOf(permanentWorkers.toArray(new StandardWorker[0])).join();
-            }
         }
+        SafeRunner.run(() -> workerController.shutdown(await));
         SafeRunner.run(toDo::close);
         SafeRunner.run(processingTasks::close);
 
-        if(executor != null) {
-            this.executor.shutdown();
-        }
         log.info("[StandardWorkerPool]: All task has been processed.");
     }
 
