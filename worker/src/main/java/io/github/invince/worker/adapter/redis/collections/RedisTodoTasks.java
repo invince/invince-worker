@@ -119,8 +119,7 @@ public class RedisTodoTasks<T extends BaseTask> implements IToDoTasks {
 
     // reduce usage of redis, otherwise every worker do RBlockingQueue.take
     private void listenToRBlockingQueue() {
-        if(!listenRunning.get()) {
-            listenRunning.set(true);
+        if(listenRunning.compareAndSet(false, true)) {
             listenerExecutor = Executors.newSingleThreadExecutor();
             listenerExecutor.execute(() -> {
                 try {
