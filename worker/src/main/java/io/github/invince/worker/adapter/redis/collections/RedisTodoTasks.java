@@ -129,12 +129,7 @@ public class RedisTodoTasks<T extends BaseTask> implements IToDoTasks {
                             if(!this.workerController.hasAvailableWorker()) {
                                 log.info("No more available worker, we'll wait 10s");
                                 // we'll wait extra time to let redis sync better
-                                try {
-                                    Thread.sleep(10 * 1000L);
-                                } catch (InterruptedException e) {
-                                    log.error(e.getMessage(), e);
-                                    Thread.currentThread().interrupt();
-                                }
+                                Thread.sleep(10 * 1000L);
                                 continue;
                             }
                             task = getRedisBQ().take(); // we don't use RBlockingQueue.subscribeOnElements because in that way, we limit the way to implement the fn using in that lambda, for ex task.cancelToDo you need do it in async way
